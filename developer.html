@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>英単語シャッター｜開発者メニュー</title>
+  <link rel="stylesheet" href="developer.css" />
+</head>
+<body>
+  <header class="dev-header">
+    <div>
+      <p class="eyebrow">Developer Console</p>
+      <h1>英単語シャッター</h1>
+      <p class="subtitle">学習メニュー・単語データ管理</p>
+    </div>
+    <div class="header-actions">
+      <button id="openStudentPreviewBtn" class="ghost-btn" type="button">生徒用アプリを確認</button>
+      <a class="ghost-btn" href="./index.html" target="_blank" rel="noopener">新しいタブで開く</a>
+    </div>
+  </header>
+
+  <main class="dev-layout">
+    <section id="adminPanel">
+      <section class="panel current-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Published Data</p>
+            <h2>現在の生徒用データ</h2>
+          </div>
+          <button id="refreshCurrentBtn" class="ghost-btn">再読み込み</button>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-card"><span>学習メニュー数</span><strong id="currentBooks">―</strong></div>
+          <div class="summary-card"><span>単語合計</span><strong id="currentTotal">―</strong></div>
+          <div class="summary-card"><span>最終更新</span><strong id="currentUpdated">―</strong></div>
+        </div>
+        <div id="currentBookList" class="current-book-list"></div>
+        <p id="currentSource" class="small-note"></p>
+      </section>
+
+      <section class="panel upload-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Upload & Publish</p>
+            <h2>英単語ファイルを読み込む</h2>
+          </div>
+        </div>
+
+        <div class="guide-box important-guide">
+          <strong>添付ファイルには「英単語」と「意味」だけを入れてください</strong>
+          <p>A列に英単語、B列に意味を入力してください。見出し行はあっても構いません。余計な情報を誤って読み取らないよう、単語と意味以外の表や文章は入れないでください。</p>
+          <p>Excel・CSV・TSV・TXT・JSON・ODS・PDFなどの形式に対応しています。PDFは文字を選択できる形式を使用してください。</p>
+        </div>
+
+        <label class="name-field">
+          <span>生徒側に表示する学習メニュー名</span>
+          <input id="bookNameInput" type="text" maxlength="100" placeholder="例：中学1年 英単語 / 英検3級対策" />
+          <small>同じ名前を指定すると、その学習メニューへ追加・更新できます。</small>
+        </label>
+
+        <label class="file-drop" id="fileDrop">
+          <input id="fileInput" type="file" />
+          <strong>単語ファイルを選択</strong>
+          <span>または、ここへファイルをドロップ</span>
+          <small>最大4MB</small>
+        </label>
+
+        <section class="thumbnail-upload-section">
+          <div class="thumbnail-section-head">
+            <div>
+              <strong>教材サムネイル（任意）</strong>
+              <p>生徒側の教材選択画面に表示されます。設定しない場合は「No Image」と表示されます。</p>
+            </div>
+            <button id="removeThumbnailBtn" class="ghost-btn thumbnail-remove-btn" type="button">サムネイルを外す</button>
+          </div>
+          <label class="thumbnail-drop" id="thumbnailDrop">
+            <input id="thumbnailInput" type="file" accept="image/png,image/jpeg,image/webp" />
+            <div id="thumbnailPreview" class="thumbnail-preview no-image"><span>No Image</span></div>
+            <div class="thumbnail-drop-copy">
+              <strong>サムネイル画像を選択</strong>
+              <span>PNG・JPEG・WebP／自動で軽量化</span>
+            </div>
+          </label>
+          <p id="thumbnailMessage" class="message"></p>
+        </section>
+
+        <p id="parseMessage" class="message"></p>
+
+        <div id="previewArea" class="preview-area hidden">
+          <div class="preview-summary">
+            <div><span>学習メニュー名</span><strong id="previewBookName">未入力</strong></div>
+            <div><span>ファイル</span><strong id="previewFilename">―</strong></div>
+            <div><span>読み取り元</span><strong id="previewSheet">―</strong></div>
+            <div><span>読み取った単語</span><strong id="previewTotal">―</strong></div>
+            <div><span>サムネイル</span><strong id="previewThumbnailName">No Image</strong></div>
+          </div>
+
+          <div class="publish-mode">
+            <h3>同じ名前の学習メニューがある場合の反映方法</h3>
+            <label class="mode-card selected">
+              <input type="radio" name="publishMode" value="merge" checked />
+              <div>
+                <strong>現在の単語に追加・更新する</strong>
+                <p>同じ英単語は意味を更新し、新しい単語は末尾へ追加します。通常はこちらを使用します。</p>
+              </div>
+            </label>
+            <label class="mode-card warning">
+              <input type="radio" name="publishMode" value="replace" />
+              <div>
+                <strong>アップロード内容で置き換える</strong>
+                <p>同じ名前の学習メニューを、今回のファイル内容だけで作り直します。</p>
+              </div>
+            </label>
+          </div>
+
+          <div class="table-head">
+            <h3>読み取りプレビュー</h3>
+            <span>先頭20件を表示</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>No.</th><th>英単語</th><th>選択対象となる意味</th></tr></thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+
+          <button id="publishBtn" class="primary-btn publish-btn">生徒用アプリへ反映する</button>
+          <p id="publishMessage" class="message"></p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="confirmDialog">
+    <h2>生徒用アプリへ反映しますか？</h2>
+    <p id="confirmText"></p>
+    <div class="dialog-actions">
+      <button id="cancelPublishBtn" class="ghost-btn">キャンセル</button>
+      <button id="confirmPublishBtn" class="primary-btn">反映する</button>
+    </div>
+  </dialog>
+
+  <dialog id="studentPreviewDialog" class="student-preview-dialog">
+    <div class="preview-dialog-head">
+      <div>
+        <p class="section-kicker">Student Preview</p>
+        <h2>生徒用アプリの確認</h2>
+      </div>
+      <div class="preview-dialog-actions">
+        <button id="reloadStudentPreviewBtn" class="ghost-btn" type="button">再読み込み</button>
+        <a class="ghost-btn" href="./index.html" target="_blank" rel="noopener">新しいタブで開く</a>
+        <button id="closeStudentPreviewBtn" class="ghost-btn" type="button">閉じる</button>
+      </div>
+    </div>
+    <iframe id="studentPreviewFrame" title="生徒用アプリのプレビュー" src="about:blank"></iframe>
+  </dialog>
+
+  <script src="developer.js"></script>
+</body>
+</html>

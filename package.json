@@ -1,0 +1,11 @@
+{
+  "name": "english-vocab-shatter-platform",
+  "version": "1.6.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^2.4.0",
+    "pdf-parse": "1.1.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}
