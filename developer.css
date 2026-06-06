@@ -46,3 +46,34 @@ dialog{max-width:560px;width:calc(100% - 32px);padding:26px;border:0;border-radi
 @media(max-width:620px){.thumbnail-section-head{flex-direction:column}.thumbnail-drop{grid-template-columns:1fr}.thumbnail-preview{width:100%}.preview-summary{grid-template-columns:1fr}.published-book-card{align-items:flex-start}.published-book-thumbnail{width:90px}}
 .published-book-card .published-book-thumbnail{display:grid;align-items:center;justify-content:center}
 .published-book-card .published-book-copy{display:block}
+
+
+/* v1.7: deployment-safe developer view */
+.system-status{max-width:1120px;margin:0 auto 18px;padding:13px 16px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.94);font-weight:900;box-shadow:0 10px 26px rgba(0,0,0,.14)}
+.system-status.loading{color:#4f55a6;background:linear-gradient(135deg,#fff,#f0f2ff)}
+.system-status.error{color:#b42f51;background:linear-gradient(135deg,#fff,#fff0f4);border-color:rgba(217,77,105,.28)}
+.load-error-card{grid-column:1/-1;display:grid!important;gap:7px!important;padding:16px 18px;border-radius:18px;border:1px solid rgba(217,77,105,.25);background:#fff1f5;color:#a52f4c}
+.load-error-card span{font-size:13px;color:#7b4352;overflow-wrap:anywhere}
+.noscript-warning{position:fixed;inset:auto 16px 16px;z-index:9999;padding:15px 18px;border-radius:16px;background:#fff1f5;color:#a52f4c;font-weight:900;box-shadow:0 14px 40px rgba(0,0,0,.25)}
+
+
+/* v1.9: 教材の追加・アーカイブ・削除管理 */
+.published-book-card.archived{opacity:.72;background:linear-gradient(145deg,#f1f3f7,#e8ebf1);border-style:dashed}
+.published-book-title-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+.book-status-badge{display:inline-flex!important;align-items:center!important;padding:5px 9px;border-radius:999px;font-size:11px!important;font-weight:900;white-space:nowrap}
+.book-status-badge.active{color:#147b5c;background:#e6fff5}.book-status-badge.archived{color:#626b7d;background:#e5e8ee}
+.published-book-meta{display:block;margin-top:6px;color:var(--soft);font-size:13px}
+.book-manage-actions{display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:7px!important;flex-wrap:wrap;margin-top:12px}
+.book-action-btn{padding:8px 12px;font-size:12px;box-shadow:none}.book-action-btn.danger{color:#bd2e4e;border-color:rgba(217,77,105,.35);background:#fff4f7}
+.system-status.success{color:#16795a;background:linear-gradient(135deg,#fff,#edfff8);border-color:rgba(22,135,98,.24)}
+@media(max-width:620px){.book-manage-actions .book-action-btn{flex:1 1 auto}.published-book-title-row{align-items:flex-start!important}}
+
+.empty-catalog-card{grid-column:1/-1;display:grid;gap:7px;padding:20px;border:1px dashed var(--line);border-radius:18px;background:#fff;text-align:center}.empty-catalog-card span{color:var(--soft);font-size:13px}
+
+
+/* v2.4: 初期教材を含むタイトル・サムネイル変更 */
+.metadata-update-box{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:14px 0 0;padding:15px 16px;border:1px solid rgba(125,220,255,.35);border-radius:18px;background:linear-gradient(135deg,rgba(125,220,255,.12),rgba(165,140,255,.1))}
+.metadata-update-box strong{display:block;font-size:16px}.metadata-update-box p{margin:5px 0 0;color:var(--soft);line-height:1.5}.metadata-update-box .primary-btn,.metadata-update-box .ghost-btn{white-space:nowrap}
+@media(max-width:720px){.metadata-update-box{align-items:stretch;flex-direction:column}.metadata-update-box .primary-btn,.metadata-update-box .ghost-btn{width:100%}}
+
+/* build: english_vocab_shatte_ver_2.4 */

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css?v=2.4.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -76,7 +76,7 @@
         <div id="shatterLayer" class="shatter-layer" aria-hidden="true"></div>
       </div>
 
-      <p class="hint">正しい意味をすべて選んでください。</p>
+      <p id="questionHint" class="hint">正しい意味をすべて選んでください。</p>
       <div id="choices" class="choices"></div>
       <p id="feedback" class="feedback"></p>
       <div class="quiz-actions">
@@ -114,6 +114,20 @@
       <h2>学習の仕方</h2>
       <button id="closeModeBtn" class="icon-btn" aria-label="閉じる">×</button>
     </div>
+
+    <section class="mode-section">
+      <h3>出題方向</h3>
+      <div class="mode-options compact-options two-columns">
+        <label class="mode-option">
+          <input type="radio" name="questionDirection" value="enToJa" />
+          <div><strong>英 → 日</strong><p>英単語を見て、日本語の意味を選びます。</p></div>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="questionDirection" value="jaToEn" />
+          <div><strong>日 → 英</strong><p>日本語の意味を見て、英単語を選びます。</p></div>
+        </label>
+      </div>
+    </section>
 
     <section class="mode-section">
       <h3>学習する単語</h3>
@@ -204,7 +218,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="words.js"></script>
-  <script src="app.js"></script>
+  <script src="/words.js?v=2.4.0"></script>
+  <script src="/app.js?v=2.4.0"></script>
 </body>
 </html>

@@ -4,6 +4,24 @@ let parsedFilename = '';
 let thumbnailDataUrl = '';
 let thumbnailFileName = '';
 let thumbnailAction = 'preserve';
+let metadataEditingBookId = '';
+let metadataEditingBookName = '';
+
+function setSystemStatus(text = '', type = ''){
+  const el = $('developerSystemStatus');
+  if(!el) return;
+  el.textContent = text;
+  el.className = `system-status ${type}`.trim();
+  el.hidden = !text;
+}
+
+window.addEventListener('error', event => {
+  setSystemStatus(`画面の読み込み中にエラーが発生しました：${event.message || '不明なエラー'}`, 'error');
+});
+window.addEventListener('unhandledrejection', event => {
+  const message = event.reason?.message || String(event.reason || '不明なエラー');
+  setSystemStatus(`処理中にエラーが発生しました：${message}`, 'error');
+});
 
 function setMessage(id, text = '', type = ''){
   const el = $(id);
@@ -47,41 +65,93 @@ async function requestJson(url, options = {}){
   return data;
 }
 
-async function loadCurrentData(){
+async function loadCurrentData(providedData = null){
+  setSystemStatus('現在の生徒用データを確認しています…', 'loading');
   $('currentBooks').textContent = '読込中';
   $('currentTotal').textContent = '―';
   $('currentUpdated').textContent = '―';
   $('currentBookList').innerHTML = '';
   try{
-    const data = await requestJson('/api/words', { cache:'no-store' });
+    const data = providedData || await requestJson(`/api/words?includeArchived=1&_=${Date.now()}`, { cache:'no-store' });
     const books = Array.isArray(data.books) ? data.books : [{ name:data.bookName || '基本英単語', total:data.total || data.words?.length || 0, updatedAt:data.updatedAt, sourceName:data.sourceName, thumbnailUrl:data.thumbnailUrl || data.thumbnailDataUrl }];
     const totalWords = Number(data.totalWords || books.reduce((sum, book) => sum + Number(book.total || book.words?.length || 0), 0));
-    $('currentBooks').textContent = `${books.length}件`;
+    const archivedCount = books.filter(book => book.archived).length;
+    const activeCount = books.length - archivedCount;
+    $('currentBooks').textContent = `${books.length}件（公開${activeCount}・保管${archivedCount}）`;
     $('currentTotal').textContent = `${totalWords}語`;
     $('currentUpdated').textContent = formatDate(data.updatedAt);
-    $('currentBookList').innerHTML = books.map(book => `
-      <div class="published-book-card">
+    $('currentBookList').innerHTML = books.length ? books.map(book => `
+      <article class="published-book-card${book.archived ? ' archived' : ''}">
         ${thumbnailMarkup(book.thumbnailUrl || book.thumbnailDataUrl)}
         <div class="published-book-copy">
-          <div>
+          <div class="published-book-title-row">
             <strong>${escapeHtml(book.name || '名称未設定')}</strong>
-            <span>${Number(book.total || book.words?.length || 0)}語 / ${Math.ceil(Number(book.total || book.words?.length || 0) / 100)} Unit / ${Math.ceil(Number(book.total || book.words?.length || 0) / 20)} Part</span>
+            <span class="book-status-badge ${book.archived ? 'archived' : 'active'}">${book.archived ? 'アーカイブ' : '公開中'}</span>
           </div>
+          <span class="published-book-meta">${Number(book.total || book.words?.length || 0)}語 / ${Math.ceil(Number(book.total || book.words?.length || 0) / 100)} Unit / ${Math.ceil(Number(book.total || book.words?.length || 0) / 20)} Part</span>
           <small>${book.sourceName ? `反映元：${escapeHtml(book.sourceName)}` : ''}${book.updatedAt ? `　更新：${escapeHtml(formatDate(book.updatedAt))}` : ''}</small>
+          <div class="book-manage-actions">
+            <button class="ghost-btn book-action-btn" type="button" data-action="edit" data-book-id="${escapeHtml(book.id || '')}" data-book-name="${escapeHtml(book.name || '')}">単語を追加・更新</button>
+            <button class="ghost-btn book-action-btn" type="button" data-action="editMeta" data-book-id="${escapeHtml(book.id || '')}" data-book-name="${escapeHtml(book.name || '')}" data-book-thumbnail="${escapeHtml(book.thumbnailUrl || book.thumbnailDataUrl || '')}">タイトル・サムネイル変更</button>
+            <button class="ghost-btn book-action-btn" type="button" data-action="${book.archived ? 'restore' : 'archive'}" data-book-id="${escapeHtml(book.id || '')}" data-book-name="${escapeHtml(book.name || '')}">${book.archived ? 'アーカイブを解除' : 'アーカイブ'}</button>
+            <button class="ghost-btn book-action-btn danger" type="button" data-action="delete" data-book-id="${escapeHtml(book.id || '')}" data-book-name="${escapeHtml(book.name || '')}">削除</button>
+          </div>
         </div>
-      </div>
-    `).join('');
-    $('currentSource').textContent = '同じ学習メニュー名を入力すると、そのメニューを追加・更新できます。';
+      </article>
+    `).join('') : '<div class="empty-catalog-card"><strong>教材がありません</strong><span>下の読み込み欄から、新しい教材を追加してください。</span></div>';
+    const authMode = data.blobAuthenticationMode || '';
+    $('currentSource').textContent = authMode === 'oidc'
+      ? 'Vercel Blob接続：OIDC認証。教材ごとに単語追加・更新、タイトル・サムネイル変更、アーカイブ、削除を行えます。'
+      : authMode === 'read-write-token'
+        ? 'Vercel Blob接続：Read-write token認証。教材ごとに単語追加・更新、タイトル・サムネイル変更、アーカイブ、削除を行えます。'
+        : 'Vercel Blobへ未接続のため、現在は同梱初期データを表示しています。';
+    if(authMode === 'none') setSystemStatus('Vercel Blobの認証情報が未設定です。', 'error');
+    else setSystemStatus('', '');
   }catch(error){
     $('currentBooks').textContent = '未公開';
     $('currentTotal').textContent = '―';
-    $('currentSource').textContent = '最初のファイルを読み込み、生徒用アプリへ反映してください。';
+    $('currentSource').textContent = 'データ取得に失敗しました。Vercelのデプロイ状況とAPI設定を確認してください。';
+    $('currentBookList').innerHTML = `<div class="load-error-card"><strong>現在のデータを読み込めませんでした</strong><span>${escapeHtml(error.message || '不明なエラー')}</span></div>`;
+    setSystemStatus(`生徒用データの取得に失敗しました：${error.message || '不明なエラー'}`, 'error');
   }
 }
 
 function updatePreviewBookName(){
   const name = $('bookNameInput').value.trim();
   $('previewBookName').textContent = name || '未入力';
+  updateMetadataControls();
+}
+
+function updateMetadataControls(){
+  const box = $('metadataUpdateBox');
+  if(!box) return;
+  const editing = Boolean(metadataEditingBookId);
+  box.classList.toggle('hidden', !editing);
+  if(editing){
+    const target = $('metadataEditTarget');
+    if(target) target.textContent = `「${metadataEditingBookName || '教材'}」のタイトルとサムネイルを変更できます。`;
+  }
+}
+
+function clearMetadataEditMode(){
+  metadataEditingBookId = '';
+  metadataEditingBookName = '';
+  updateMetadataControls();
+}
+
+function startMetadataEdit(bookId, bookName, thumbnailUrl){
+  metadataEditingBookId = bookId || '';
+  metadataEditingBookName = bookName || '';
+  $('bookNameInput').value = bookName || '';
+  thumbnailDataUrl = thumbnailUrl || '';
+  thumbnailFileName = thumbnailUrl ? '現在のサムネイル' : '';
+  thumbnailAction = 'preserve';
+  $('thumbnailInput').value = '';
+  renderThumbnailPreview();
+  updatePreviewBookName();
+  setMessage('metadataMessage', `「${bookName || '教材'}」のタイトル・サムネイルを変更できます。`, 'success');
+  setMessage('thumbnailMessage', '新しい画像を選択しない場合、現在のサムネイルを保持します。', '');
+  document.querySelector('.upload-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 function updatePreviewThumbnailName(){
@@ -279,10 +349,100 @@ async function publish(){
   }finally{ $('publishBtn').disabled = false; }
 }
 
+async function managePublishedBook(action, bookId, bookName, thumbnailUrl = ''){
+  if(action === 'edit'){
+    clearMetadataEditMode();
+    $('bookNameInput').value = bookName || '';
+    updatePreviewBookName();
+    document.querySelector('.upload-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    setMessage('parseMessage', `「${bookName}」へ追加・更新する単語ファイルを選択してください。`, 'success');
+    return;
+  }
+  if(action === 'editMeta'){
+    startMetadataEdit(bookId, bookName, thumbnailUrl);
+    return;
+  }
+  const actionLabel = action === 'delete' ? '削除' : action === 'archive' ? 'アーカイブ' : 'アーカイブを解除';
+  const detail = action === 'delete' ? 'この操作は元に戻せません。' : action === 'archive' ? '生徒用アプリから非表示になります。' : '生徒用アプリへ再表示します。';
+  if(!confirm(`「${bookName}」を${actionLabel}しますか？
+${detail}`)) return;
+  const buttons = [...document.querySelectorAll(`[data-book-id="${CSS.escape(bookId)}"]`)];
+  buttons.forEach(button => button.disabled = true);
+  setSystemStatus(`「${bookName}」を${actionLabel}しています…`, 'loading');
+  try{
+    const result = await requestJson('/api/admin-book-action', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ action, bookId }),
+    });
+    await loadCurrentData(result);
+    setSystemStatus(`「${bookName}」を${actionLabel}しました。`, 'success');
+  }catch(error){
+    setSystemStatus(error.message || '教材の操作に失敗しました。', 'error');
+    buttons.forEach(button => button.disabled = false);
+  }
+}
+
+async function updateBookMetadata(){
+  if(!metadataEditingBookId){
+    setMessage('metadataMessage', '変更する教材を選択してください。', 'error');
+    return;
+  }
+  const bookName = selectedBookName();
+  if(!bookName){
+    setMessage('metadataMessage', '教材名を入力してください。', 'error');
+    $('bookNameInput').focus();
+    return;
+  }
+  const label = thumbnailAction === 'replace' ? 'サムネイルも更新' : thumbnailAction === 'remove' ? 'サムネイルをNo Imageへ変更' : 'サムネイルは保持';
+  if(!confirm(`「${metadataEditingBookName || '教材'}」の教材情報を更新しますか？
+新しい表示名：${bookName}
+${label}`)) return;
+  const button = $('metadataUpdateBtn');
+  if(button) button.disabled = true;
+  setMessage('metadataMessage', '教材情報を更新しています…', 'loading');
+  try{
+    await requestJson('/api/admin-book-action', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        action:'updateMeta',
+        bookId:metadataEditingBookId,
+        bookName,
+        thumbnailAction,
+        thumbnailDataUrl:thumbnailAction === 'replace' ? thumbnailDataUrl : '',
+      }),
+    });
+    setMessage('metadataMessage', `「${bookName}」の教材情報を更新しました。`, 'success');
+    metadataEditingBookName = bookName;
+    resetThumbnailAfterPublish();
+    clearMetadataEditMode();
+    await loadCurrentData();
+  }catch(error){
+    setMessage('metadataMessage', error.message || '教材情報の更新に失敗しました。', 'error');
+  }finally{
+    if(button) button.disabled = false;
+  }
+}
+
+function cancelMetadataEdit(){
+  clearMetadataEditMode();
+  resetThumbnailAfterPublish();
+  setMessage('metadataMessage', '', '');
+}
+
+$('currentBookList').addEventListener('click', event => {
+  const button = event.target.closest('[data-action][data-book-id]');
+  if(!button) return;
+  managePublishedBook(button.dataset.action, button.dataset.bookId, button.dataset.bookName || '教材', button.dataset.bookThumbnail || '');
+});
+
 $('refreshCurrentBtn').addEventListener('click', loadCurrentData);
 $('fileInput').addEventListener('change', event => parseFile(event.target.files?.[0]));
 $('thumbnailInput').addEventListener('change', event => parseThumbnail(event.target.files?.[0]));
 $('removeThumbnailBtn').addEventListener('click', removeThumbnail);
+$('metadataUpdateBtn').addEventListener('click', updateBookMetadata);
+$('metadataCancelBtn').addEventListener('click', cancelMetadataEdit);
 $('bookNameInput').addEventListener('input', updatePreviewBookName);
 $('publishBtn').addEventListener('click', openConfirm);
 $('cancelPublishBtn').addEventListener('click', () => $('confirmDialog').close());
@@ -301,17 +461,23 @@ function setupDropZone(element, onFile){
 setupDropZone($('fileDrop'), parseFile);
 setupDropZone($('thumbnailDrop'), parseThumbnail);
 renderThumbnailPreview();
+setSystemStatus('開発者画面を読み込みました。生徒用データを確認しています…', 'loading');
 loadCurrentData();
 
 function studentAppUrl(){
-  return new URL('./index.html', window.location.href).href;
+  return `${window.location.origin}/`;
 }
 
 function openStudentPreview(){
   const frame = $('studentPreviewFrame');
-  frame.src = studentAppUrl();
+  setSystemStatus('生徒用アプリを読み込んでいます…', 'loading');
+  frame.src = `${studentAppUrl()}?developerPreview=${Date.now()}`;
   $('studentPreviewDialog').showModal();
 }
+
+$('studentPreviewFrame').addEventListener('load', () => {
+  if($('studentPreviewFrame').src !== 'about:blank') setSystemStatus('', '');
+});
 
 $('openStudentPreviewBtn').addEventListener('click', openStudentPreview);
 $('reloadStudentPreviewBtn').addEventListener('click', () => {

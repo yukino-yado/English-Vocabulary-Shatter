@@ -7,6 +7,25 @@ const MAX_WORDS_PER_BOOK = 20000;
 const MAX_BOOKS = 200;
 const MAX_THUMBNAIL_BYTES = 1_500_000;
 
+function hasBlobConfiguration() {
+  // VercelのOIDCトークンは通常の環境変数ではなく、実行時のリクエスト
+  // コンテキストに自動付与されます。ここではBLOB_STORE_IDの有無だけを
+  // 確認し、実際の認証処理は@vercel/blob SDKへ任せます。
+  return Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+function withBlobStore(options = {}) {
+  return process.env.BLOB_STORE_ID
+    ? { ...options, storeId: process.env.BLOB_STORE_ID }
+    : options;
+}
+
+export function blobAuthenticationMode() {
+  if(process.env.BLOB_STORE_ID) return 'oidc';
+  if(process.env.BLOB_READ_WRITE_TOKEN) return 'read-write-token';
+  return 'none';
+}
+
 export function normalizeIdentity(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -66,6 +85,8 @@ function normalizeBook(rawBook, index = 0) {
     sourceName: String(rawBook?.sourceName || '').slice(0, 200),
     updatedAt: rawBook?.updatedAt || null,
     thumbnailUrl: normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
+    archived: Boolean(rawBook?.archived),
+    archivedAt: rawBook?.archivedAt || null,
     total: words.length,
     words,
   };
@@ -86,6 +107,8 @@ function baseCatalog() {
       sourceName: '同梱初期データ',
       updatedAt: null,
       thumbnailUrl: '',
+      archived: false,
+      archivedAt: null,
       total: words.length,
       words,
     }],
@@ -95,9 +118,9 @@ function baseCatalog() {
 export function normalizeCatalog(raw) {
   if(raw?.books && Array.isArray(raw.books)) {
     const books = raw.books.slice(0, MAX_BOOKS).map(normalizeBook).filter(Boolean);
-    if(!books.length) return baseCatalog();
+    if(!books.length && Number(raw.schemaVersion) < 4) return baseCatalog();
     return {
-      schemaVersion: 3,
+      schemaVersion: Math.max(4, Number(raw.schemaVersion) || 0),
       version: Number(raw.version) || 0,
       updatedAt: raw.updatedAt || null,
       sourceName: String(raw.sourceName || '').slice(0, 200),
@@ -133,14 +156,97 @@ export function normalizeCatalog(raw) {
   return baseCatalog();
 }
 
+function blobDatasetVersion(blob) {
+  const source = String(blob?.pathname || blob?.url || '');
+  const match = source.match(/words-(\d{10,})/);
+  const pathnameVersion = match ? Number(match[1]) : 0;
+  const uploadedVersion = new Date(blob?.uploadedAt || 0).getTime() || 0;
+  return Math.max(pathnameVersion, uploadedVersion);
+}
+
 export async function getLatestDataset() {
-  if(!process.env.BLOB_READ_WRITE_TOKEN) return baseCatalog();
-  const result = await list({ prefix: PREFIX, limit: 1000 });
+  if(!hasBlobConfiguration()) return baseCatalog();
+  const result = await list(withBlobStore({ prefix: PREFIX, limit: 1000 }));
   if(!result.blobs?.length) return baseCatalog();
-  const latest = [...result.blobs].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
-  const response = await fetch(`${latest.url}?v=${encodeURIComponent(latest.uploadedAt)}`, { cache:'no-store' });
+  const latest = [...result.blobs].sort((a, b) => blobDatasetVersion(b) - blobDatasetVersion(a))[0];
+  const response = await fetch(`${latest.url}?v=${encodeURIComponent(blobDatasetVersion(latest))}`, { cache:'no-store' });
   if(!response.ok) throw new Error('公開済み単語データを読み込めませんでした。');
   return normalizeCatalog(await response.json());
+}
+
+export function publicCatalog(rawCatalog) {
+  const catalog = normalizeCatalog(rawCatalog);
+  const books = catalog.books.filter(book => !book.archived);
+  return {
+    ...catalog,
+    totalBooks: books.length,
+    totalWords: books.reduce((sum, book) => sum + book.total, 0),
+    books,
+  };
+}
+
+async function persistCatalog(books, sourceName = '') {
+  if(!hasBlobConfiguration()) throw new Error('Vercel Blobがプロジェクトへ接続されていません。BLOB_STORE_IDを確認してください。');
+  const now = new Date();
+  const normalizedBooks = books.map(normalizeBook).filter(Boolean).map(book => ({ ...book, total:book.words.length }));
+  const dataset = {
+    schemaVersion: 4,
+    version: now.getTime(),
+    updatedAt: now.toISOString(),
+    sourceName: String(sourceName || '').slice(0, 200),
+    totalBooks: normalizedBooks.length,
+    totalWords: normalizedBooks.reduce((sum, book) => sum + book.total, 0),
+    books: normalizedBooks,
+  };
+  const pathname = `${PREFIX}${String(dataset.version).padStart(16, '0')}.json`;
+  const blob = await put(pathname, JSON.stringify(dataset), withBlobStore({
+    access: 'public',
+    addRandomSuffix: true,
+    cacheControlMaxAge: 60,
+  }));
+  return { ...dataset, blobUrl:blob.url };
+}
+
+export async function manageBook({ bookId = '', action = '', bookName = '', thumbnailAction = 'preserve', thumbnailDataUrl = '' }) {
+  if(!hasBlobConfiguration()) throw new Error('Vercel Blobがプロジェクトへ接続されていません。BLOB_STORE_IDを確認してください。');
+  const current = normalizeCatalog(await getLatestDataset().catch(() => baseCatalog()));
+  const books = current.books.map(book => ({ ...book, words:normalizeWords(book.words) }));
+  const index = books.findIndex(book => book.id === String(bookId || ''));
+  if(index < 0) throw new Error('指定された教材が見つかりません。');
+  const target = books[index];
+  const now = new Date();
+  if(action === 'archive') {
+    if(target.archived) throw new Error('この教材はすでにアーカイブされています。');
+    books[index] = { ...target, archived:true, archivedAt:now.toISOString(), updatedAt:now.toISOString() };
+  } else if(action === 'restore') {
+    books[index] = { ...target, archived:false, archivedAt:null, updatedAt:now.toISOString() };
+  } else if(action === 'delete') {
+    books.splice(index, 1);
+  } else if(action === 'updateMeta') {
+    const cleanBookName = String(bookName || '').trim().slice(0, 100);
+    if(!cleanBookName) throw new Error('教材名を入力してください。');
+    const nextIdentity = normalizeIdentity(cleanBookName);
+    const duplicate = books.find((book, bookIndex) => bookIndex !== index && normalizeIdentity(book.name) === nextIdentity);
+    if(duplicate) throw new Error('同じ名前の教材がすでにあります。別の名前を指定してください。');
+    let nextThumbnail = target.thumbnailUrl || '';
+    if(thumbnailAction === 'replace') nextThumbnail = await publishThumbnail(thumbnailDataUrl, cleanBookName, now);
+    if(thumbnailAction === 'remove') nextThumbnail = '';
+    books[index] = {
+      ...target,
+      name:cleanBookName,
+      thumbnailUrl:nextThumbnail,
+      updatedAt:now.toISOString(),
+      total:target.words.length,
+      words:target.words,
+    };
+  } else {
+    throw new Error('操作内容が正しくありません。');
+  }
+  const result = await persistCatalog(books, `developer:${action}`);
+  const affected = action === 'delete'
+    ? { id:target.id, name:target.name, deleted:true, archived:Boolean(target.archived) }
+    : result.books.find(book => book.id === target.id) || { id:target.id, name:target.name };
+  return { ...result, affectedBook:affected, action };
 }
 
 function mergeWords(existingWords, incomingWords) {
@@ -174,16 +280,16 @@ async function publishThumbnail(dataUrl, bookName, timestamp) {
   const { buffer, extension } = parseThumbnailDataUrl(dataUrl);
   const slug = normalizeIdentity(bookName).replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'book';
   const pathname = `${THUMBNAIL_PREFIX}${timestamp.getTime()}-${slug}.${extension}`;
-  const blob = await put(pathname, buffer, {
+  const blob = await put(pathname, buffer, withBlobStore({
     access: 'public',
     addRandomSuffix: true,
     cacheControlMaxAge: 31536000,
-  });
+  }));
   return blob.url;
 }
 
 export async function publishWords({ rawWords, mode = 'merge', sourceName = '', bookName = '', thumbnailDataUrl = '', thumbnailAction = 'preserve' }) {
-  if(!process.env.BLOB_READ_WRITE_TOKEN) throw new Error('Vercel Blobが未設定です。');
+  if(!hasBlobConfiguration()) throw new Error('Vercel Blobがプロジェクトへ接続されていません。BLOB_STORE_IDを確認してください。');
   const cleanBookName = String(bookName || '').trim().slice(0, 100);
   if(!cleanBookName) throw new Error('学習メニューの名前を入力してください。');
 
@@ -211,6 +317,8 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: nextThumbnail,
+      archived: false,
+      archivedAt: null,
       total: words.length,
       words,
     };
@@ -222,27 +330,14 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: thumbnailAction === 'replace' ? uploadedThumbnailUrl : '',
+      archived: false,
+      archivedAt: null,
       total: incoming.length,
       words: incoming,
     });
   }
 
-  const dataset = {
-    schemaVersion: 3,
-    version: now.getTime(),
-    updatedAt: now.toISOString(),
-    sourceName: String(sourceName || '').slice(0, 200),
-    totalBooks: books.length,
-    totalWords: books.reduce((sum, book) => sum + book.words.length, 0),
-    books: books.map(book => ({ ...book, total:book.words.length })),
-  };
-
-  const pathname = `${PREFIX}${String(dataset.version).padStart(16, '0')}.json`;
-  const blob = await put(pathname, JSON.stringify(dataset), {
-    access: 'public',
-    addRandomSuffix: true,
-    cacheControlMaxAge: 60,
-  });
+  const dataset = await persistCatalog(books, sourceName);
   const publishedBook = dataset.books.find(book => normalizeIdentity(book.name) === targetIdentity);
-  return { ...dataset, publishedBook, blobUrl: blob.url };
+  return { ...dataset, publishedBook };
 }

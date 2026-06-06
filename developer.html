@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>英単語シャッター｜開発者メニュー</title>
-  <link rel="stylesheet" href="developer.css" />
+  <link rel="stylesheet" href="/developer.css?v=2.4.0" />
 </head>
 <body>
   <header class="dev-header">
@@ -15,11 +17,12 @@
     </div>
     <div class="header-actions">
       <button id="openStudentPreviewBtn" class="ghost-btn" type="button">生徒用アプリを確認</button>
-      <a class="ghost-btn" href="./index.html" target="_blank" rel="noopener">新しいタブで開く</a>
+      <a class="ghost-btn" href="/" target="_blank" rel="noopener">新しいタブで開く</a>
     </div>
   </header>
 
   <main class="dev-layout">
+    <div id="developerSystemStatus" class="system-status loading" role="status">開発者画面を読み込んでいます…</div>
     <section id="adminPanel">
       <section class="panel current-panel">
         <div class="section-head">
@@ -86,6 +89,16 @@
 
         <p id="parseMessage" class="message"></p>
 
+        <div class="metadata-update-box hidden" id="metadataUpdateBox">
+          <div>
+            <strong>教材情報を変更中</strong>
+            <p id="metadataEditTarget">選択中の教材名とサムネイルだけを更新できます。</p>
+          </div>
+          <button id="metadataUpdateBtn" class="primary-btn" type="button">教材情報だけ更新する</button>
+          <button id="metadataCancelBtn" class="ghost-btn" type="button">やめる</button>
+        </div>
+        <p id="metadataMessage" class="message"></p>
+
         <div id="previewArea" class="preview-area hidden">
           <div class="preview-summary">
             <div><span>学習メニュー名</span><strong id="previewBookName">未入力</strong></div>
@@ -148,13 +161,14 @@
       </div>
       <div class="preview-dialog-actions">
         <button id="reloadStudentPreviewBtn" class="ghost-btn" type="button">再読み込み</button>
-        <a class="ghost-btn" href="./index.html" target="_blank" rel="noopener">新しいタブで開く</a>
+        <a class="ghost-btn" href="/" target="_blank" rel="noopener">新しいタブで開く</a>
         <button id="closeStudentPreviewBtn" class="ghost-btn" type="button">閉じる</button>
       </div>
     </div>
     <iframe id="studentPreviewFrame" title="生徒用アプリのプレビュー" src="about:blank"></iframe>
   </dialog>
 
-  <script src="developer.js"></script>
+  <noscript><div class="noscript-warning">JavaScriptが無効になっています。ブラウザのJavaScriptを有効にしてください。</div></noscript>
+  <script src="/developer.js?v=2.4.0" defer></script>
 </body>
 </html>

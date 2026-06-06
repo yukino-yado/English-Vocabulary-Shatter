@@ -123,11 +123,12 @@ function loadSettings(){
     const saved = safeReadStorage(key);
     if(saved){ base = saved; break; }
   }
-  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
+  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', questionDirection:'enToJa', statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
   if(typeof base.timeLimit !== 'number') base.timeLimit = 20;
   if(!Number.isFinite(Number(base.studyCount))) base.studyCount = 10;
   if(!base.orderMode) base.orderMode = 'shuffle';
   if(!['normal','weak','wrong'].includes(base.studyTarget)) base.studyTarget = 'normal';
+  if(!['enToJa','jaToEn'].includes(base.questionDirection)) base.questionDirection = 'enToJa';
   if(!base.statsScope) base.statsScope = 'all';
   if(typeof base.selectedBookId !== 'string') base.selectedBookId = '';
   if(!Number.isFinite(Number(base.selectedUnit)) || Number(base.selectedUnit) < 1) base.selectedUnit = 1;
@@ -199,6 +200,7 @@ function normalizeBook(rawBook, index = 0){
     sourceName:String(rawBook?.sourceName || ''),
     updatedAt:rawBook?.updatedAt || null,
     thumbnailUrl:normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
+    archived:Boolean(rawBook?.archived),
     total:words.length,
     words
   };
@@ -206,8 +208,8 @@ function normalizeBook(rawBook, index = 0){
 
 function normalizeCatalog(payload){
   if(payload?.books && Array.isArray(payload.books)){
-    const books = payload.books.map(normalizeBook).filter(Boolean);
-    if(books.length) return { ...payload, books };
+    const books = payload.books.map(normalizeBook).filter(book => book && !book.archived);
+    if(books.length || Number(payload.schemaVersion) >= 4 || Number(payload.totalBooks) === 0) return { ...payload, books };
   }
   const legacyWords = normalizePublishedWords(payload?.words || payload);
   if(legacyWords.length){
@@ -224,11 +226,10 @@ function fallbackCatalog(){
 
 function selectCurrentBook(preferredId = ''){
   const preferred = preferredId || settings.selectedBookId;
-  currentBook = catalog.books.find(book => book.id === preferred) || catalog.books[0] || fallbackCatalog().books[0];
-  WORDS = currentBook.words;
-  settings.selectedBookId = currentBook.id;
+  currentBook = catalog.books.find(book => book.id === preferred) || catalog.books[0] || null;
+  WORDS = currentBook?.words || [];
+  settings.selectedBookId = currentBook?.id || '';
   saveSettings();
-  if(currentBookName) currentBookName.textContent = currentBook.name;
   renderCurrentBookCard();
 }
 
@@ -252,7 +253,8 @@ async function loadPublishedWords(){
 
   const cachedCatalog = safeReadStorage(BOOK_CATALOG_CACHE_KEY);
   const normalizedCachedCatalog = normalizeCatalog(cachedCatalog);
-  if(normalizedCachedCatalog.books.length) catalog = normalizedCachedCatalog;
+  const cachedIsExplicit = Number(cachedCatalog?.schemaVersion) >= 4 && Array.isArray(cachedCatalog?.books);
+  if(normalizedCachedCatalog.books.length || cachedIsExplicit) catalog = normalizedCachedCatalog;
   else {
     const legacyCache = safeReadStorage(WORD_DATA_CACHE_KEY);
     const legacyCatalog = normalizeCatalog(Array.isArray(legacyCache) ? { words:legacyCache } : legacyCache);
@@ -264,7 +266,8 @@ async function loadPublishedWords(){
     if(response.ok){
       const payload = await response.json();
       const publishedCatalog = normalizeCatalog(payload);
-      if(publishedCatalog.books.length){
+      const publishedIsExplicit = Number(payload?.schemaVersion) >= 4 && Array.isArray(payload?.books);
+      if(publishedCatalog.books.length || publishedIsExplicit){
         catalog = publishedCatalog;
         try{
           localStorage.setItem(BOOK_CATALOG_CACHE_KEY, JSON.stringify(catalog));
@@ -299,7 +302,12 @@ function setThumbnail(container, dataUrl){
 }
 
 function renderCurrentBookCard(){
-  if(!currentBook) return;
+  if(!currentBook){
+    if(currentBookName) currentBookName.textContent = '公開中の教材がありません';
+    if(currentBookMeta) currentBookMeta.textContent = '開発者用アプリから教材を追加・公開してください';
+    setThumbnail(currentBookThumbnail, '');
+    return;
+  }
   if(currentBookName) currentBookName.textContent = currentBook.name;
   if(currentBookMeta) currentBookMeta.textContent = `${currentBook.total}語・${Math.ceil(currentBook.total / UNIT_SIZE)} Unit`;
   setThumbnail(currentBookThumbnail, currentBook.thumbnailUrl);
@@ -394,8 +402,20 @@ function studyTargetText(target){
   if(target === 'wrong') return '間違えた単語';
   return '通常学習';
 }
+function questionDirectionText(direction){ return direction === 'jaToEn' ? '日→英' : '英→日'; }
+function correctAnswersForWord(word){
+  return settings.questionDirection === 'jaToEn' ? [word.word] : word.answers;
+}
+function questionTextForWord(word){
+  return settings.questionDirection === 'jaToEn' ? word.answers.join(' / ') : word.word;
+}
+function questionHintText(){
+  return settings.questionDirection === 'jaToEn'
+    ? '正しい英単語を1つ選んでください。'
+    : '正しい意味をすべて選んでください。';
+}
 function modeSummaryText(){
-  return `${studyTargetText(settings.studyTarget)}・${modeText(settings.orderMode)}・${settings.studyCount}単語・${settings.timeLimit}秒`;
+  return `${studyTargetText(settings.studyTarget)}・${questionDirectionText(settings.questionDirection)}・${modeText(settings.orderMode)}・${settings.studyCount}単語・${settings.timeLimit}秒`;
 }
 function clearStartMessage(){
   if(startMessage) startMessage.textContent = '';
@@ -404,6 +424,20 @@ function clearStartMessage(){
 function initUnits(){
   const unitCount = Math.ceil(WORDS.length / UNIT_SIZE);
   unitSelect.innerHTML = '';
+  if(unitCount === 0){
+    unitSelect.innerHTML = '<option value="1">教材なし</option>';
+    partSelect.innerHTML = '<option value="1">教材なし</option>';
+    unitSelect.disabled = true;
+    partSelect.disabled = true;
+    $('startBtn').disabled = true;
+    statsScopeSelect.innerHTML = '<option value="all">全体</option>';
+    unitInfo.textContent = '現在、生徒用に公開されている教材はありません。';
+    clearStartMessage();
+    return;
+  }
+  unitSelect.disabled = false;
+  partSelect.disabled = false;
+  $('startBtn').disabled = false;
   for(let u=1; u<=unitCount; u++){
     const r = unitRange(u);
     const opt = document.createElement('option');
@@ -457,11 +491,19 @@ function syncModeUI(){
   document.querySelectorAll('input[name="orderMode"]').forEach(radio => {
     radio.checked = radio.value === (settings.orderMode || 'shuffle');
   });
+  document.querySelectorAll('input[name="questionDirection"]').forEach(radio => {
+    radio.checked = radio.value === (settings.questionDirection || 'enToJa');
+  });
   if(modeCountSelect) modeCountSelect.value = String(settings.studyCount || 10);
   if(modeTimeSelect) modeTimeSelect.value = String(settings.timeLimit || 20);
 }
 
 function updateUnitInfo(){
+  if(!currentBook || WORDS.length === 0){
+    unitInfo.textContent = '現在、生徒用に公開されている教材はありません。';
+    clearStartMessage();
+    return;
+  }
   const unit = Number(unitSelect.value || 1);
   const part = Number(partSelect.value || 1);
   const words = partWords(unit, part);
@@ -471,7 +513,7 @@ function updateUnitInfo(){
 }
 
 function continuationStateKey(unit, part){
-  return `${currentBook?.id || 'book:default'}|unit:${unit}|part:${part}|mode:${settings.orderMode || 'shuffle'}`;
+  return `${currentBook?.id || 'book:default'}|unit:${unit}|part:${part}|mode:${settings.orderMode || 'shuffle'}|direction:${settings.questionDirection || 'enToJa'}`;
 }
 
 function makeCycleOrder(pool){
@@ -483,6 +525,15 @@ function getCycleState(pool, unit, part){
   const key = continuationStateKey(unit, part);
   const signature = pool.map(progressKey).join('|');
   let state = continuation[key];
+  // ver 1.7以前の英→日学習の続き位置を、そのまま引き継ぐ。
+  if(!state && settings.questionDirection !== 'jaToEn'){
+    const legacyKey = `${currentBook?.id || 'book:default'}|unit:${unit}|part:${part}|mode:${settings.orderMode || 'shuffle'}`;
+    if(continuation[legacyKey]){
+      state = continuation[legacyKey];
+      continuation[key] = state;
+      saveContinuation();
+    }
+  }
   const invalid = !state || state.signature !== signature || !Array.isArray(state.order) || !Number.isFinite(Number(state.cursor));
   if(invalid || Number(state.cursor) >= state.order.length){
     state = { signature, order:makeCycleOrder(pool), cursor:0 };
@@ -527,6 +578,10 @@ function pickReviewSession(pool, count){
 }
 
 function startQuiz(){
+  if(!currentBook || WORDS.length === 0){
+    startMessage.textContent = '現在、生徒用に公開されている教材はありません。';
+    return;
+  }
   settings.selectedUnit = Number(unitSelect.value || 1);
   settings.selectedPart = Number(partSelect.value || 1);
   saveSettings();
@@ -544,6 +599,7 @@ function startQuiz(){
     return;
   }
   clearStartMessage();
+  document.body.classList.add('quiz-active');
   currentIndex = 0;
   score = 0;
   answered = false;
@@ -554,16 +610,20 @@ function startQuiz(){
 }
 
 function makeChoices(word){
-  const correct = word.answers;
+  const correct = correctAnswersForWord(word);
   const correctSet = new Set(correct);
-  const allMeanings = WORDS.flatMap(w => w.answers).filter(m => !correctSet.has(m));
+  const promptMeanings = new Set(word.answers);
+  const candidates = settings.questionDirection === 'jaToEn'
+    ? WORDS.filter(item => !item.answers.some(answer => promptMeanings.has(answer))).map(item => item.word)
+    : WORDS.flatMap(item => item.answers);
   const dummyCount = Math.max(4, 6 - correct.length);
-  const dummies = shuffle([...new Set(allMeanings)]).slice(0, dummyCount);
+  const dummies = shuffle([...new Set(candidates.filter(value => !correctSet.has(value)))]).slice(0, dummyCount);
   return shuffle([...correct, ...dummies]);
 }
 
-function renderWord(text){
+function renderWord(text, isMeaningPrompt = false){
   wordText.classList.remove('word-hidden');
+  wordText.classList.toggle('meaning-prompt', isMeaningPrompt);
   wordText.innerHTML = [...text].map(ch => `<span class="word-char">${escapeHtml(ch === ' ' ? '\u00A0' : ch)}</span>`).join('');
   shatterLayer.innerHTML = '';
   wordStage.classList.remove('cracked', 'flash', 'shatter-hit');
@@ -573,7 +633,8 @@ function showQuestion(){
   clearTimer();
   answered = false;
   const w = session[currentIndex];
-  renderWord(w.word);
+  renderWord(questionTextForWord(w), settings.questionDirection === 'jaToEn');
+  $('questionHint').textContent = questionHintText();
   $('progressText').textContent = `${currentIndex + 1} / ${session.length}`;
   $('progressBar').style.width = `${(currentIndex / session.length) * 100}%`;
   feedback.textContent = '';
@@ -713,9 +774,10 @@ function timeUp(){
   p.streak = 0;
   saveProgress();
   markCurrentWordStudied();
-  feedback.textContent = `時間切れ！ 正解：${w.answers.join(' / ')}`;
+  const correctAnswers = correctAnswersForWord(w);
+  feedback.textContent = `時間切れ！ 正解：${correctAnswers.join(' / ')}`;
   feedback.className = 'feedback bad';
-  lockChoicesAndMarkAnswers(w.answers, []);
+  lockChoicesAndMarkAnswers(correctAnswers, []);
   $('checkBtn').classList.add('hidden');
   $('nextBtn').classList.remove('hidden');
   $('progressBar').style.width = `${((currentIndex + 1) / session.length) * 100}%`;
@@ -733,7 +795,8 @@ function checkAnswer(){
 
   clearTimer();
   answered = true;
-  const isCorrect = sameSet(selected, w.answers);
+  const correctAnswers = correctAnswersForWord(w);
+  const isCorrect = sameSet(selected, correctAnswers);
   const p = wordProgress(w);
   p.seen++;
 
@@ -747,13 +810,13 @@ function checkAnswer(){
   }else{
     p.wrong++;
     p.streak = 0;
-    feedback.textContent = `不正解！ 正解：${w.answers.join(' / ')}`;
+    feedback.textContent = `不正解！ 正解：${correctAnswers.join(' / ')}`;
     feedback.className = 'feedback bad';
   }
 
   saveProgress();
   markCurrentWordStudied();
-  lockChoicesAndMarkAnswers(w.answers, selected);
+  lockChoicesAndMarkAnswers(correctAnswers, selected);
   $('checkBtn').classList.add('hidden');
   $('nextBtn').classList.remove('hidden');
   $('progressBar').style.width = `${((currentIndex + 1) / session.length) * 100}%`;
@@ -767,6 +830,7 @@ function nextQuestion(){
 
 function showResult(){
   clearTimer();
+  document.body.classList.remove('quiz-active');
   quizScreen.classList.add('hidden');
   resultScreen.classList.remove('hidden');
   $('scoreText').textContent = `${score} / ${session.length} 問 正解`;
@@ -793,9 +857,9 @@ function renderStats(){
   saveSettings();
 
   const targetWords = statsWordsForScope(scope);
-  const label = scope === 'all' ? `${currentBook?.name || '学習メニュー'}・全体` : `${currentBook?.name || '学習メニュー'}・Unit${scope}`;
+  const label = scope === 'all' ? `${currentBook?.name || '教材なし'}・全体` : `${currentBook?.name || '教材なし'}・Unit${scope}`;
   const learned = targetWords.filter(w => progressForWord(w)?.seen > 0).length;
-  const learnedPct = Math.round((learned / targetWords.length) * 100);
+  const learnedPct = targetWords.length ? Math.round((learned / targetWords.length) * 100) : 0;
 
   $('learnedHeading').textContent = `${label}の学習した量`;
   $('masteryHeading').textContent = `${label}の定着具合`;
@@ -836,8 +900,10 @@ function openModeDialog(){
 function saveMode(){
   const selectedTarget = document.querySelector('input[name="studyTarget"]:checked');
   const selectedOrder = document.querySelector('input[name="orderMode"]:checked');
+  const selectedDirection = document.querySelector('input[name="questionDirection"]:checked');
   settings.studyTarget = selectedTarget ? selectedTarget.value : 'normal';
   settings.orderMode = selectedOrder ? selectedOrder.value : 'shuffle';
+  settings.questionDirection = selectedDirection ? selectedDirection.value : 'enToJa';
   settings.studyCount = Number(modeCountSelect.value) || 10;
   settings.timeLimit = Number(modeTimeSelect.value) || 20;
   saveSettings();
@@ -883,11 +949,13 @@ $('checkBtn').addEventListener('click', checkAnswer);
 $('nextBtn').addEventListener('click', nextQuestion);
 $('backBtn').addEventListener('click', () => {
   clearTimer();
+  document.body.classList.remove('quiz-active');
   quizScreen.classList.add('hidden');
   menuScreen.classList.remove('hidden');
   updateUnitInfo();
 });
 $('retryBtn').addEventListener('click', () => {
+  document.body.classList.remove('quiz-active');
   resultScreen.classList.add('hidden');
   menuScreen.classList.remove('hidden');
   updateUnitInfo();

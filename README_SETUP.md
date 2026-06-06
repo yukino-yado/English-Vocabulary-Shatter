@@ -1,4 +1,4 @@
-# 英単語シャッター ver 1.6：教材サムネイル対応版
+# 英単語シャッター ver 1.7：開発者画面表示安定化版
 
 ## URL構成
 
@@ -33,7 +33,7 @@
 1. Vercelで対象プロジェクトを開く
 2. `Storage` を開く
 3. `Blob` のストアを **Public** で作成し、対象プロジェクトへ接続
-4. `BLOB_READ_WRITE_TOKEN` がプロジェクトの環境変数へ追加されたことを確認
+4. 接続後、`BLOB_STORE_ID` がプロジェクトの環境変数へ追加されたことを確認
 5. 必要に応じて再デプロイ
 
 ### 3. 学習メニューを追加
@@ -129,3 +129,49 @@
 - 「サムネイルを外す」でNo Imageへ変更可能
 - サムネイル画像はブラウザ側で横長に切り抜き・軽量化し、Vercel Blobへ保存
 - これまでの教材データ・学習履歴は引き続き読み込み可能
+
+
+## ver 1.7 の変更点
+
+- 開発者画面のCSS・JavaScriptをルート絶対パスで読み込むよう変更
+- CSS・JavaScriptにバージョン番号を付け、古いキャッシュが表示される問題を防止
+- `developer.html`・`developer.js`・`developer.css`をVercelでキャッシュしない設定を追加
+- 開発者画面内の生徒用プレビューを、`/index.html`ではなく生徒用ルート`/`から開くよう修正
+- 開発者画面やAPIの読み込みに失敗した場合、画面上に原因を表示
+
+
+## ver 1.8
+- 生徒用の「学習の仕方」に、英→日・日→英の出題方向設定を追加しました。
+
+
+## Version 2.0 CSS update
+
+Student and developer CSS/JavaScript files are loaded from absolute root paths with version parameters. Vercel cache headers are configured so updated files are reflected immediately after deployment.
+
+
+## ver_2.1 の更新
+- 教材が1件のみの場合でもアーカイブできます。
+- アーカイブ中の教材は、同じボタンが「アーカイブを解除」に切り替わります。
+- 操作直後に開発者画面へ状態を反映します。
+
+
+## ver_2.2 の更新
+
+- 現在のVercel Blob接続で自動設定される `BLOB_STORE_ID` と `VERCEL_OIDC_TOKEN` に対応しました。
+- 従来の `BLOB_READ_WRITE_TOKEN` にも引き続き対応しています。
+- 開発者画面に、利用中のBlob認証方式を表示します。
+- `VERCEL_OIDC_TOKEN` はSystem Environment Variableのため、Environment Variables一覧に通常表示されません。
+
+
+## ver_2.4 の更新
+
+- 現行Vercel BlobのOIDC接続方式へ正式対応しました。
+- `VERCEL_OIDC_TOKEN` は実行時のリクエストコンテキストから `@vercel/blob` SDKが自動取得するため、アプリ側では直接確認しません。
+- `BLOB_STORE_ID` が存在する場合はOIDC接続として扱い、`list`・`put`などの認証処理をSDKへ任せます。
+- 従来の `BLOB_READ_WRITE_TOKEN` 接続にも対応しています。
+- 開発者画面で誤って「Vercel Blobの認証情報が未設定」と表示される問題を修正しました。
+
+
+## ver_2.4 追加
+
+開発者画面の教材一覧から「タイトル・サムネイル変更」を押すと、同梱初期データを含む既存教材の表示名とサムネイルだけを更新できます。単語ファイルの再アップロードは不要です。
