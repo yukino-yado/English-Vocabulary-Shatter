@@ -25,6 +25,9 @@ const unitSelect = $('unitSelect');
 const partSelect = $('partSelect');
 const modeCountSelect = $('modeCountSelect');
 const modeTimeSelect = $('modeTimeSelect');
+const rangeStartUnitSelect = $('rangeStartUnitSelect');
+const rangeEndUnitSelect = $('rangeEndUnitSelect');
+const unitRangeFields = $('unitRangeFields');
 const modeSummary = $('modeSummary');
 const startMessage = $('startMessage');
 const unitInfo = $('unitInfo');
@@ -36,6 +39,7 @@ const feedback = $('feedback');
 const wordText = $('wordText');
 const wordStage = $('wordStage');
 const shatterLayer = $('shatterLayer');
+const judgeEffect = $('judgeEffect');
 const statsScopeSelect = $('statsScopeSelect');
 const currentBookName = $('currentBookName');
 
@@ -123,12 +127,15 @@ function loadSettings(){
     const saved = safeReadStorage(key);
     if(saved){ base = saved; break; }
   }
-  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', questionDirection:'enToJa', statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
+  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', questionDirection:'enToJa', rangeMode:'part', rangeStartUnit:1, rangeEndUnit:1, statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
   if(typeof base.timeLimit !== 'number') base.timeLimit = 20;
   if(!Number.isFinite(Number(base.studyCount))) base.studyCount = 10;
   if(!base.orderMode) base.orderMode = 'shuffle';
   if(!['normal','weak','wrong'].includes(base.studyTarget)) base.studyTarget = 'normal';
   if(!['enToJa','jaToEn'].includes(base.questionDirection)) base.questionDirection = 'enToJa';
+  if(!['part','unit','unitRange','all'].includes(base.rangeMode)) base.rangeMode = 'part';
+  if(!Number.isFinite(Number(base.rangeStartUnit)) || Number(base.rangeStartUnit) < 1) base.rangeStartUnit = 1;
+  if(!Number.isFinite(Number(base.rangeEndUnit)) || Number(base.rangeEndUnit) < 1) base.rangeEndUnit = Number(base.rangeStartUnit) || 1;
   if(!base.statsScope) base.statsScope = 'all';
   if(typeof base.selectedBookId !== 'string') base.selectedBookId = '';
   if(!Number.isFinite(Number(base.selectedUnit)) || Number(base.selectedUnit) < 1) base.selectedUnit = 1;
@@ -386,6 +393,38 @@ function partWords(unit, part){
   const r = partRange(unit, part);
   return WORDS.filter(w => w.id >= r.start && w.id <= r.end);
 }
+function wordsInUnitRange(startUnit, endUnit){
+  const unitCount = Math.max(1, Math.ceil(WORDS.length / UNIT_SIZE));
+  const start = Math.min(Math.max(Number(startUnit) || 1, 1), unitCount);
+  const end = Math.min(Math.max(Number(endUnit) || start, start), unitCount);
+  const startId = unitRange(start).start;
+  const endId = unitRange(end).end;
+  return WORDS.filter(w => w.id >= startId && w.id <= endId);
+}
+function rangeModeText(mode){
+  if(mode === 'all') return '全Unit';
+  if(mode === 'unit') return '選択Unit全体';
+  if(mode === 'unitRange') return `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
+  return '選択Part';
+}
+function currentStudyPool(){
+  const unit = Number(unitSelect.value || settings.selectedUnit || 1);
+  const part = Number(partSelect.value || settings.selectedPart || 1);
+  const rangeMode = settings.rangeMode || 'part';
+  if(rangeMode === 'all') return [...WORDS];
+  if(rangeMode === 'unit') return unitWords(unit);
+  if(rangeMode === 'unitRange') return wordsInUnitRange(settings.rangeStartUnit, settings.rangeEndUnit);
+  return partWords(unit, part);
+}
+function currentRangeLabel(){
+  const unit = Number(unitSelect.value || settings.selectedUnit || 1);
+  const part = Number(partSelect.value || settings.selectedPart || 1);
+  const rangeMode = settings.rangeMode || 'part';
+  if(rangeMode === 'all') return '全Unit';
+  if(rangeMode === 'unit') return `Unit${unit}全体`;
+  if(rangeMode === 'unitRange') return `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
+  return `Unit${unit}・Part${part}`;
+}
 function shuffle(array){
   const a = [...array];
   for(let i=a.length-1;i>0;i--){
@@ -415,10 +454,32 @@ function questionHintText(){
     : '正しい意味をすべて選んでください。';
 }
 function modeSummaryText(){
-  return `${studyTargetText(settings.studyTarget)}・${questionDirectionText(settings.questionDirection)}・${modeText(settings.orderMode)}・${settings.studyCount}単語・${settings.timeLimit}秒`;
+  return `${studyTargetText(settings.studyTarget)}・${rangeModeText(settings.rangeMode)}・${questionDirectionText(settings.questionDirection)}・${modeText(settings.orderMode)}・${settings.studyCount}単語・${settings.timeLimit}秒`;
 }
 function clearStartMessage(){
   if(startMessage) startMessage.textContent = '';
+}
+
+function populateRangeUnitSelects(){
+  if(!rangeStartUnitSelect || !rangeEndUnitSelect) return;
+  const unitCount = Math.max(1, Math.ceil(WORDS.length / UNIT_SIZE));
+  const currentStart = Math.min(Math.max(Number(settings.rangeStartUnit) || 1, 1), unitCount);
+  const currentEnd = Math.min(Math.max(Number(settings.rangeEndUnit) || currentStart, currentStart), unitCount);
+  rangeStartUnitSelect.innerHTML = '';
+  rangeEndUnitSelect.innerHTML = '';
+  for(let u=1; u<=unitCount; u++){
+    const r = unitRange(u);
+    const startOpt = document.createElement('option');
+    startOpt.value = String(u);
+    startOpt.textContent = `Unit${u}（${r.start}〜${r.end}）`;
+    const endOpt = startOpt.cloneNode(true);
+    rangeStartUnitSelect.appendChild(startOpt);
+    rangeEndUnitSelect.appendChild(endOpt);
+  }
+  settings.rangeStartUnit = currentStart;
+  settings.rangeEndUnit = currentEnd;
+  rangeStartUnitSelect.value = String(currentStart);
+  rangeEndUnitSelect.value = String(currentEnd);
 }
 
 function initUnits(){
@@ -459,6 +520,7 @@ function initUnits(){
   }
   if(![...statsScopeSelect.options].some(option => option.value === String(settings.statsScope))) settings.statsScope = 'all';
   statsScopeSelect.value = settings.statsScope || 'all';
+  populateRangeUnitSelects();
   initParts();
   syncModeUI();
   saveSettings();
@@ -494,8 +556,20 @@ function syncModeUI(){
   document.querySelectorAll('input[name="questionDirection"]').forEach(radio => {
     radio.checked = radio.value === (settings.questionDirection || 'enToJa');
   });
+  document.querySelectorAll('input[name="rangeMode"]').forEach(radio => {
+    radio.checked = radio.value === (settings.rangeMode || 'part');
+  });
+  populateRangeUnitSelects();
+  if(rangeStartUnitSelect) rangeStartUnitSelect.value = String(settings.rangeStartUnit || 1);
+  if(rangeEndUnitSelect) rangeEndUnitSelect.value = String(settings.rangeEndUnit || settings.rangeStartUnit || 1);
+  updateRangeFieldsVisibility();
   if(modeCountSelect) modeCountSelect.value = String(settings.studyCount || 10);
   if(modeTimeSelect) modeTimeSelect.value = String(settings.timeLimit || 20);
+}
+
+function updateRangeFieldsVisibility(){
+  const mode = document.querySelector('input[name="rangeMode"]:checked')?.value || settings.rangeMode || 'part';
+  if(unitRangeFields) unitRangeFields.classList.toggle('hidden', mode !== 'unitRange');
 }
 
 function updateUnitInfo(){
@@ -504,16 +578,24 @@ function updateUnitInfo(){
     clearStartMessage();
     return;
   }
-  const unit = Number(unitSelect.value || 1);
-  const part = Number(partSelect.value || 1);
-  const words = partWords(unit, part);
+  const words = currentStudyPool();
   const learned = words.filter(w => progressForWord(w)?.seen > 0).length;
-  unitInfo.innerHTML = `<b>${escapeHtml(currentBook?.name || '学習メニュー')}</b><br>Unit${unit}・Part${part}：<b>${words.length}</b> 単語　学習済み：<b>${learned}</b> / ${words.length} 単語`;
+  unitInfo.innerHTML = `<b>${escapeHtml(currentBook?.name || '学習メニュー')}</b><br>${escapeHtml(currentRangeLabel())}：<b>${words.length}</b> 単語　学習済み：<b>${learned}</b> / ${words.length} 単語`;
   clearStartMessage();
 }
 
-function continuationStateKey(unit, part){
-  return `${currentBook?.id || 'book:default'}|unit:${unit}|part:${part}|mode:${settings.orderMode || 'shuffle'}|direction:${settings.questionDirection || 'enToJa'}`;
+function rangeContinuationLabel(){
+  const unit = Number(unitSelect.value || settings.selectedUnit || 1);
+  const part = Number(partSelect.value || settings.selectedPart || 1);
+  const mode = settings.rangeMode || 'part';
+  if(mode === 'all') return 'range:all';
+  if(mode === 'unit') return `range:unit:${unit}`;
+  if(mode === 'unitRange') return `range:unit:${settings.rangeStartUnit || 1}-${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
+  return `unit:${unit}|part:${part}`;
+}
+
+function continuationStateKey(){
+  return `${currentBook?.id || 'book:default'}|${rangeContinuationLabel()}|mode:${settings.orderMode || 'shuffle'}|direction:${settings.questionDirection || 'enToJa'}`;
 }
 
 function makeCycleOrder(pool){
@@ -521,12 +603,14 @@ function makeCycleOrder(pool){
   return ordered.map(progressKey);
 }
 
-function getCycleState(pool, unit, part){
-  const key = continuationStateKey(unit, part);
+function getCycleState(pool){
+  const key = continuationStateKey();
   const signature = pool.map(progressKey).join('|');
   let state = continuation[key];
-  // ver 1.7以前の英→日学習の続き位置を、そのまま引き継ぐ。
-  if(!state && settings.questionDirection !== 'jaToEn'){
+  // ver 1.7以前の英→日・Part学習の続き位置を、そのまま引き継ぐ。
+  if(!state && settings.questionDirection !== 'jaToEn' && (settings.rangeMode || 'part') === 'part'){
+    const unit = Number(unitSelect.value || settings.selectedUnit || 1);
+    const part = Number(partSelect.value || settings.selectedPart || 1);
     const legacyKey = `${currentBook?.id || 'book:default'}|unit:${unit}|part:${part}|mode:${settings.orderMode || 'shuffle'}`;
     if(continuation[legacyKey]){
       state = continuation[legacyKey];
@@ -543,8 +627,8 @@ function getCycleState(pool, unit, part){
   return { key, state };
 }
 
-function pickSessionWords(pool, count, unit, part){
-  const { key, state } = getCycleState(pool, unit, part);
+function pickSessionWords(pool, count){
+  const { key, state } = getCycleState(pool);
   const byKey = new Map(pool.map(word => [progressKey(word), word]));
   const remaining = state.order.slice(Number(state.cursor) || 0).map(uid => byKey.get(uid)).filter(Boolean);
   const selected = remaining.slice(0, Math.min(count, remaining.length));
@@ -585,17 +669,15 @@ function startQuiz(){
   settings.selectedUnit = Number(unitSelect.value || 1);
   settings.selectedPart = Number(partSelect.value || 1);
   saveSettings();
-  const unit = settings.selectedUnit;
-  const part = settings.selectedPart;
   const count = Number(settings.studyCount) || 10;
-  const basePool = partWords(unit, part);
+  const basePool = currentStudyPool();
   const pool = reviewPool(basePool);
   session = settings.studyTarget === 'normal'
-    ? pickSessionWords(pool, count, unit, part)
+    ? pickSessionWords(pool, count)
     : pickReviewSession(pool, count);
   if(!session.length){
     const target = studyTargetText(settings.studyTarget);
-    startMessage.textContent = `${target}に該当する単語が、このPartにはありません。`;
+    startMessage.textContent = `${target}に該当する単語が、${currentRangeLabel()}にはありません。`;
     return;
   }
   clearStartMessage();
@@ -627,6 +709,7 @@ function renderWord(text, isMeaningPrompt = false){
   wordText.innerHTML = [...text].map(ch => `<span class="word-char">${escapeHtml(ch === ' ' ? '\u00A0' : ch)}</span>`).join('');
   shatterLayer.innerHTML = '';
   wordStage.classList.remove('cracked', 'flash', 'shatter-hit');
+  hideJudgeEffect();
 }
 
 function showQuestion(){
@@ -754,6 +837,23 @@ function shatterWord(){
   setTimeout(() => wordStage.classList.remove('flash', 'shatter-hit'), 520);
 }
 
+function showJudgeEffect(type){
+  if(!judgeEffect) return;
+  const mark = type === 'correct' ? '〇' : '×';
+  const label = type === 'correct' ? '正解' : type === 'timeup' ? '時間切れ' : '不正解';
+  judgeEffect.innerHTML = `<span class="judge-mark">${mark}</span><span class="judge-label">${label}</span>`;
+  judgeEffect.className = `judge-effect show ${type}`;
+  setTimeout(() => {
+    if(judgeEffect) judgeEffect.classList.remove('show');
+  }, 900);
+}
+
+function hideJudgeEffect(){
+  if(!judgeEffect) return;
+  judgeEffect.className = 'judge-effect';
+  judgeEffect.innerHTML = '';
+}
+
 function lockChoicesAndMarkAnswers(correctAnswers, selectedAnswers = []){
   choicesBox.querySelectorAll('.choice').forEach(label => {
     const val = label.dataset.choice;
@@ -775,6 +875,7 @@ function timeUp(){
   saveProgress();
   markCurrentWordStudied();
   const correctAnswers = correctAnswersForWord(w);
+  showJudgeEffect('timeup');
   feedback.textContent = `時間切れ！ 正解：${correctAnswers.join(' / ')}`;
   feedback.className = 'feedback bad';
   lockChoicesAndMarkAnswers(correctAnswers, []);
@@ -805,11 +906,16 @@ function checkAnswer(){
     p.streak++;
     score++;
     shatterWord();
+    showJudgeEffect('correct');
     feedback.textContent = '正解！';
     feedback.className = 'feedback good';
   }else{
     p.wrong++;
     p.streak = 0;
+    showJudgeEffect('wrong');
+    wordStage.classList.remove('wrong-hit');
+    void wordStage.offsetWidth;
+    wordStage.classList.add('wrong-hit');
     feedback.textContent = `不正解！ 正解：${correctAnswers.join(' / ')}`;
     feedback.className = 'feedback bad';
   }
@@ -901,9 +1007,13 @@ function saveMode(){
   const selectedTarget = document.querySelector('input[name="studyTarget"]:checked');
   const selectedOrder = document.querySelector('input[name="orderMode"]:checked');
   const selectedDirection = document.querySelector('input[name="questionDirection"]:checked');
+  const selectedRange = document.querySelector('input[name="rangeMode"]:checked');
   settings.studyTarget = selectedTarget ? selectedTarget.value : 'normal';
   settings.orderMode = selectedOrder ? selectedOrder.value : 'shuffle';
   settings.questionDirection = selectedDirection ? selectedDirection.value : 'enToJa';
+  settings.rangeMode = selectedRange ? selectedRange.value : 'part';
+  settings.rangeStartUnit = Number(rangeStartUnitSelect?.value) || 1;
+  settings.rangeEndUnit = Math.max(Number(rangeEndUnitSelect?.value) || settings.rangeStartUnit, settings.rangeStartUnit);
   settings.studyCount = Number(modeCountSelect.value) || 10;
   settings.timeLimit = Number(modeTimeSelect.value) || 20;
   saveSettings();
@@ -965,6 +1075,11 @@ $('closeStatsBtn').addEventListener('click', () => $('statsDialog').close());
 $('resetBtn').addEventListener('click', resetProgress);
 $('openModeBtn').addEventListener('click', openModeDialog);
 $('closeModeBtn').addEventListener('click', () => $('modeDialog').close());
+document.querySelectorAll('input[name="rangeMode"]').forEach(radio => radio.addEventListener('change', updateRangeFieldsVisibility));
+rangeStartUnitSelect?.addEventListener('change', () => {
+  const start = Number(rangeStartUnitSelect.value) || 1;
+  if(Number(rangeEndUnitSelect?.value) < start) rangeEndUnitSelect.value = String(start);
+});
 $('saveModeBtn').addEventListener('click', saveMode);
 
 (async function boot(){
