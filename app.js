@@ -23,10 +23,12 @@ const bookSearchInput = $('bookSearchInput');
 const bookEmptyMessage = $('bookEmptyMessage');
 const unitSelect = $('unitSelect');
 const partSelect = $('partSelect');
+const partField = $('partField');
 const modeCountSelect = $('modeCountSelect');
 const modeTimeSelect = $('modeTimeSelect');
 const rangeStartUnitSelect = $('rangeStartUnitSelect');
 const rangeEndUnitSelect = $('rangeEndUnitSelect');
+const unitRangeModeFields = $('unitRangeModeFields');
 const unitRangeFields = $('unitRangeFields');
 const modeSummary = $('modeSummary');
 const startMessage = $('startMessage');
@@ -127,13 +129,15 @@ function loadSettings(){
     const saved = safeReadStorage(key);
     if(saved){ base = saved; break; }
   }
-  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', questionDirection:'enToJa', rangeMode:'part', rangeStartUnit:1, rangeEndUnit:1, statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
+  base = base || { timeLimit:20, studyCount:10, orderMode:'shuffle', studyTarget:'normal', questionDirection:'enToJa', rangeMode:'part', unitRangeMode:'all', rangeStartUnit:1, rangeEndUnit:1, statsScope:'all', selectedBookId:'', selectedUnit:1, selectedPart:1 };
   if(typeof base.timeLimit !== 'number') base.timeLimit = 20;
   if(!Number.isFinite(Number(base.studyCount))) base.studyCount = 10;
   if(!base.orderMode) base.orderMode = 'shuffle';
   if(!['normal','weak','wrong'].includes(base.studyTarget)) base.studyTarget = 'normal';
   if(!['enToJa','jaToEn'].includes(base.questionDirection)) base.questionDirection = 'enToJa';
-  if(!['part','unit','unitRange','all'].includes(base.rangeMode)) base.rangeMode = 'part';
+  if(['unitRange','all'].includes(base.rangeMode)){ base.unitRangeMode = base.rangeMode === 'unitRange' ? 'range' : 'all'; base.rangeMode = 'custom'; }
+  if(!['part','unit','custom'].includes(base.rangeMode)) base.rangeMode = 'part';
+  if(!['all','range'].includes(base.unitRangeMode)) base.unitRangeMode = 'all';
   if(!Number.isFinite(Number(base.rangeStartUnit)) || Number(base.rangeStartUnit) < 1) base.rangeStartUnit = 1;
   if(!Number.isFinite(Number(base.rangeEndUnit)) || Number(base.rangeEndUnit) < 1) base.rangeEndUnit = Number(base.rangeStartUnit) || 1;
   if(!base.statsScope) base.statsScope = 'all';
@@ -178,12 +182,64 @@ function wordProgress(word){
   return progress[key];
 }
 
+
+function answerLabelParts(answer){
+  return String(answer || '').match(/【[^】]+】/g) || [];
+}
+function answerBodyPart(answer){
+  return String(answer || '').replace(/【[^】]+】/g, '').replace(/\s+/g, ' ').trim();
+}
+function normalizeMeaningBody(answer){
+  return answerBodyPart(answer)
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/[\s　・、，,。.!！?？［\]「」『』]/g, '')
+    .trim();
+}
+function formatMergedAnswer(labels, body){
+  const labelText = [...new Set(labels)].join('');
+  return `${labelText}${body}`.trim();
+}
+function consolidateAnswers(rawAnswers){
+  const source = Array.isArray(rawAnswers) ? rawAnswers : [];
+  const premerged = [];
+  for(let i=0; i<source.length; i++){
+    const current = String(source[i] || '').trim();
+    if(!current) continue;
+    const labels = answerLabelParts(current);
+    const body = answerBodyPart(current);
+    if(labels.length && !body && i + 1 < source.length){
+      const next = String(source[i + 1] || '').trim();
+      const nextLabels = answerLabelParts(next);
+      const nextBody = answerBodyPart(next);
+      if(nextLabels.length && nextBody){
+        premerged.push(formatMergedAnswer([...labels, ...nextLabels], nextBody));
+        i++;
+        continue;
+      }
+    }
+    premerged.push(current);
+  }
+  const groups = [];
+  for(const answer of premerged){
+    const labels = answerLabelParts(answer);
+    const body = answerBodyPart(answer);
+    const key = normalizeMeaningBody(answer) || body || answer;
+    const group = groups.find(item => item.key === key);
+    if(group){
+      group.labels.push(...labels);
+      if(body.length > group.body.length) group.body = body;
+    }else{
+      groups.push({ key, labels:[...labels], body, fallback:answer });
+    }
+  }
+  return groups.map(item => item.body ? formatMergedAnswer(item.labels, item.body) : item.fallback).filter(Boolean);
+}
 function normalizePublishedWords(rawWords){
   if(!Array.isArray(rawWords)) return [];
   return rawWords.map((item, index) => {
     const word = String(item?.word || '').trim();
     const answers = Array.isArray(item?.answers)
-      ? item.answers.map(v => String(v || '').trim()).filter(Boolean)
+      ? consolidateAnswers(item.answers.map(v => String(v || '').trim()).filter(Boolean))
       : [];
     const meaning = String(item?.meaning || answers.join('　')).trim();
     if(!word || answers.length === 0) return null;
@@ -402,27 +458,24 @@ function wordsInUnitRange(startUnit, endUnit){
   return WORDS.filter(w => w.id >= startId && w.id <= endId);
 }
 function rangeModeText(mode){
-  if(mode === 'all') return '全Unit';
-  if(mode === 'unit') return '選択Unit全体';
-  if(mode === 'unitRange') return `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
-  return '選択Part';
+  if(mode === 'custom') return settings.unitRangeMode === 'range' ? `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}` : 'すべてのUnitから';
+  if(mode === 'unit') return '選択したUnit全てから';
+  return '選択したPartから';
 }
 function currentStudyPool(){
   const unit = Number(unitSelect.value || settings.selectedUnit || 1);
   const part = Number(partSelect.value || settings.selectedPart || 1);
   const rangeMode = settings.rangeMode || 'part';
-  if(rangeMode === 'all') return [...WORDS];
+  if(rangeMode === 'custom') return settings.unitRangeMode === 'range' ? wordsInUnitRange(settings.rangeStartUnit, settings.rangeEndUnit) : [...WORDS];
   if(rangeMode === 'unit') return unitWords(unit);
-  if(rangeMode === 'unitRange') return wordsInUnitRange(settings.rangeStartUnit, settings.rangeEndUnit);
   return partWords(unit, part);
 }
 function currentRangeLabel(){
   const unit = Number(unitSelect.value || settings.selectedUnit || 1);
   const part = Number(partSelect.value || settings.selectedPart || 1);
   const rangeMode = settings.rangeMode || 'part';
-  if(rangeMode === 'all') return '全Unit';
-  if(rangeMode === 'unit') return `Unit${unit}全体`;
-  if(rangeMode === 'unitRange') return `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
+  if(rangeMode === 'custom') return settings.unitRangeMode === 'range' ? `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}` : 'すべてのUnit';
+  if(rangeMode === 'unit') return `Unit${unit}全て`;
   return `Unit${unit}・Part${part}`;
 }
 function shuffle(array){
@@ -559,20 +612,32 @@ function syncModeUI(){
   document.querySelectorAll('input[name="rangeMode"]').forEach(radio => {
     radio.checked = radio.value === (settings.rangeMode || 'part');
   });
+  document.querySelectorAll('input[name="unitRangeMode"]').forEach(radio => {
+    radio.checked = radio.value === (settings.unitRangeMode || 'all');
+  });
   populateRangeUnitSelects();
   if(rangeStartUnitSelect) rangeStartUnitSelect.value = String(settings.rangeStartUnit || 1);
   if(rangeEndUnitSelect) rangeEndUnitSelect.value = String(settings.rangeEndUnit || settings.rangeStartUnit || 1);
   updateRangeFieldsVisibility();
+  updateHomeRangeVisibility();
   if(modeCountSelect) modeCountSelect.value = String(settings.studyCount || 10);
   if(modeTimeSelect) modeTimeSelect.value = String(settings.timeLimit || 20);
 }
 
 function updateRangeFieldsVisibility(){
   const mode = document.querySelector('input[name="rangeMode"]:checked')?.value || settings.rangeMode || 'part';
-  if(unitRangeFields) unitRangeFields.classList.toggle('hidden', mode !== 'unitRange');
+  const subMode = document.querySelector('input[name="unitRangeMode"]:checked')?.value || settings.unitRangeMode || 'all';
+  if(unitRangeModeFields) unitRangeModeFields.classList.toggle('hidden', mode !== 'custom');
+  if(unitRangeFields) unitRangeFields.classList.toggle('hidden', mode !== 'custom' || subMode !== 'range');
+}
+
+function updateHomeRangeVisibility(){
+  const mode = settings.rangeMode || 'part';
+  if(partField) partField.classList.toggle('hidden', mode !== 'part');
 }
 
 function updateUnitInfo(){
+  updateHomeRangeVisibility();
   if(!currentBook || WORDS.length === 0){
     unitInfo.textContent = '現在、生徒用に公開されている教材はありません。';
     clearStartMessage();
@@ -588,9 +653,8 @@ function rangeContinuationLabel(){
   const unit = Number(unitSelect.value || settings.selectedUnit || 1);
   const part = Number(partSelect.value || settings.selectedPart || 1);
   const mode = settings.rangeMode || 'part';
-  if(mode === 'all') return 'range:all';
+  if(mode === 'custom') return settings.unitRangeMode === 'range' ? `range:unit:${settings.rangeStartUnit || 1}-${settings.rangeEndUnit || settings.rangeStartUnit || 1}` : 'range:all';
   if(mode === 'unit') return `range:unit:${unit}`;
-  if(mode === 'unitRange') return `range:unit:${settings.rangeStartUnit || 1}-${settings.rangeEndUnit || settings.rangeStartUnit || 1}`;
   return `unit:${unit}|part:${part}`;
 }
 
@@ -1008,10 +1072,12 @@ function saveMode(){
   const selectedOrder = document.querySelector('input[name="orderMode"]:checked');
   const selectedDirection = document.querySelector('input[name="questionDirection"]:checked');
   const selectedRange = document.querySelector('input[name="rangeMode"]:checked');
+  const selectedUnitRangeMode = document.querySelector('input[name="unitRangeMode"]:checked');
   settings.studyTarget = selectedTarget ? selectedTarget.value : 'normal';
   settings.orderMode = selectedOrder ? selectedOrder.value : 'shuffle';
   settings.questionDirection = selectedDirection ? selectedDirection.value : 'enToJa';
   settings.rangeMode = selectedRange ? selectedRange.value : 'part';
+  settings.unitRangeMode = selectedUnitRangeMode ? selectedUnitRangeMode.value : 'all';
   settings.rangeStartUnit = Number(rangeStartUnitSelect?.value) || 1;
   settings.rangeEndUnit = Math.max(Number(rangeEndUnitSelect?.value) || settings.rangeStartUnit, settings.rangeStartUnit);
   settings.studyCount = Number(modeCountSelect.value) || 10;
@@ -1076,6 +1142,7 @@ $('resetBtn').addEventListener('click', resetProgress);
 $('openModeBtn').addEventListener('click', openModeDialog);
 $('closeModeBtn').addEventListener('click', () => $('modeDialog').close());
 document.querySelectorAll('input[name="rangeMode"]').forEach(radio => radio.addEventListener('change', updateRangeFieldsVisibility));
+document.querySelectorAll('input[name="unitRangeMode"]').forEach(radio => radio.addEventListener('change', updateRangeFieldsVisibility));
 rangeStartUnitSelect?.addEventListener('change', () => {
   const start = Number(rangeStartUnitSelect.value) || 1;
   if(Number(rangeEndUnitSelect?.value) < start) rangeEndUnitSelect.value = String(start);

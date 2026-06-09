@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="/style.css?v=2.5.0" />
+  <link rel="stylesheet" href="/style.css?v=2.7.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -43,7 +43,7 @@
           <span>Unit</span>
           <select id="unitSelect"></select>
         </label>
-        <label>
+        <label id="partField">
           <span>Part</span>
           <select id="partSelect"></select>
         </label>
@@ -153,19 +153,28 @@
       <div class="mode-options compact-options two-columns">
         <label class="mode-option">
           <input type="radio" name="rangeMode" value="part" />
-          <div><strong>選択Part</strong><p>メニューで選んだPartから出題します。</p></div>
+          <div><strong>選択したPartから</strong><p>メニューで選んだPartから出題します。</p></div>
         </label>
         <label class="mode-option">
           <input type="radio" name="rangeMode" value="unit" />
-          <div><strong>選択Unit全体</strong><p>メニューで選んだUnit全体から出題します。</p></div>
+          <div><strong>選択したUnit全てから</strong><p>メニューで選んだUnit全体から出題します。</p></div>
         </label>
-        <label class="mode-option">
-          <input type="radio" name="rangeMode" value="unitRange" />
-          <div><strong>Unit範囲指定</strong><p>指定したUnitの範囲から出題します。</p></div>
+        <label class="mode-option wide-option">
+          <input type="radio" name="rangeMode" value="custom" />
+          <div>
+            <strong>学習するUnitの範囲を変える</strong>
+            <p>教材全体、または指定したUnit範囲から出題します。</p>
+          </div>
         </label>
-        <label class="mode-option">
-          <input type="radio" name="rangeMode" value="all" />
-          <div><strong>全Unit</strong><p>教材内のすべてのUnitから出題します。</p></div>
+      </div>
+      <div id="unitRangeModeFields" class="range-sub-options hidden">
+        <label>
+          <input type="radio" name="unitRangeMode" value="all" />
+          <span>すべてのUnitから</span>
+        </label>
+        <label>
+          <input type="radio" name="unitRangeMode" value="range" />
+          <span>範囲を指定する</span>
         </label>
       </div>
       <div id="unitRangeFields" class="setting-grid unit-range-fields hidden">
@@ -251,7 +260,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="/words.js?v=2.5.0"></script>
-  <script src="/app.js?v=2.5.0"></script>
+  <script src="/words.js?v=2.7.0"></script>
+  <script src="/app.js?v=2.7.0"></script>
 </body>
 </html>

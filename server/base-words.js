@@ -251,8 +251,7 @@ export const BASE_WORDS = [
     "word": "better",
     "meaning": "【形】【副】good，well，very muchの比較級",
     "answers": [
-      "【形】",
-      "【副】good，well，very muchの比較級"
+      "【形】【副】good，well，very muchの比較級"
     ]
   },
   {
@@ -560,8 +559,7 @@ export const BASE_WORDS = [
     "word": "best",
     "meaning": "【形】【副】good，well，very muchの最上級",
     "answers": [
-      "【形】",
-      "【副】good，well，very muchの最上級"
+      "【形】【副】good，well，very muchの最上級"
     ]
   },
   {
@@ -1363,8 +1361,7 @@ export const BASE_WORDS = [
     "word": "quarter",
     "meaning": "【名】【形】４分の１（の）",
     "answers": [
-      "【名】",
-      "【形】４分の１（の）"
+      "【名】【形】４分の１（の）"
     ]
   },
   {
@@ -1477,8 +1474,7 @@ export const BASE_WORDS = [
     "word": "less",
     "meaning": "【形】【副】もっと少なく、より～でなく〈littleの比較級〉",
     "answers": [
-      "【形】",
-      "【副】もっと少なく、より～でなく〈littleの比較級〉"
+      "【形】【副】もっと少なく、より～でなく〈littleの比較級〉"
     ]
   },
   {
@@ -1689,8 +1685,7 @@ export const BASE_WORDS = [
     "word": "east",
     "meaning": "【名】【形】東（の）",
     "answers": [
-      "【名】",
-      "【形】東（の）"
+      "【名】【形】東（の）"
     ]
   },
   {
@@ -3142,8 +3137,7 @@ export const BASE_WORDS = [
     "word": "outdoor",
     "meaning": "【形】【副】屋外の（で）、野外の（で）",
     "answers": [
-      "【形】",
-      "【副】屋外の（で）、野外の（で）"
+      "【形】【副】屋外の（で）、野外の（で）"
     ]
   },
   {
@@ -5526,8 +5520,7 @@ export const BASE_WORDS = [
     "word": "white",
     "meaning": "【名】【形】白（い）",
     "answers": [
-      "【名】",
-      "【形】白（い）"
+      "【名】【形】白（い）"
     ]
   },
   {

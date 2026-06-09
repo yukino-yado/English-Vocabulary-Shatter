@@ -42,8 +42,60 @@ function normalizeThumbnailSource(value) {
   }
 }
 
+function answerLabelParts(answer) {
+  return String(answer || '').match(/【[^】]+】/g) || [];
+}
+function answerBodyPart(answer) {
+  return String(answer || '').replace(/【[^】]+】/g, '').replace(/\s+/g, ' ').trim();
+}
+function normalizeMeaningBody(answer) {
+  return answerBodyPart(answer)
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/[\s　・、，,。.!！?？［\]「」『』]/g, '')
+    .trim();
+}
+function formatMergedAnswer(labels, body) {
+  const labelText = [...new Set(labels)].join('');
+  return `${labelText}${body}`.trim();
+}
+function consolidateAnswers(rawAnswers) {
+  const source = Array.isArray(rawAnswers) ? rawAnswers : [];
+  const premerged = [];
+  for(let index = 0; index < source.length; index++) {
+    const current = String(source[index] || '').trim();
+    if(!current) continue;
+    const labels = answerLabelParts(current);
+    const body = answerBodyPart(current);
+    if(labels.length && !body && index + 1 < source.length) {
+      const next = String(source[index + 1] || '').trim();
+      const nextLabels = answerLabelParts(next);
+      const nextBody = answerBodyPart(next);
+      if(nextLabels.length && nextBody) {
+        premerged.push(formatMergedAnswer([...labels, ...nextLabels], nextBody));
+        index++;
+        continue;
+      }
+    }
+    premerged.push(current);
+  }
+  const groups = [];
+  for(const answer of premerged) {
+    const labels = answerLabelParts(answer);
+    const body = answerBodyPart(answer);
+    const key = normalizeMeaningBody(answer) || body || answer;
+    const group = groups.find(item => item.key === key);
+    if(group) {
+      group.labels.push(...labels);
+      if(body.length > group.body.length) group.body = body;
+    } else {
+      groups.push({ key, labels:[...labels], body, fallback:answer });
+    }
+  }
+  return groups.map(item => item.body ? formatMergedAnswer(item.labels, item.body) : item.fallback).filter(Boolean);
+}
+
 function answersFrom(value) {
-  if(Array.isArray(value)) return [...new Set(value.map(v => String(v || '').trim()).filter(Boolean))];
+  if(Array.isArray(value)) return consolidateAnswers([...new Set(value.map(v => String(v || '').trim()).filter(Boolean))]);
   return [];
 }
 

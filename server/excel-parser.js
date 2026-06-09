@@ -3,7 +3,8 @@ import * as XLSX from 'xlsx';
 function splitMeaning(value) {
   const text = String(value || '').replace(/\r?\n/g, '　').trim();
   if(!text) return [];
-  const labelled = text.match(/【[^】]+】[^【]*/g)?.map(v => v.trim()).filter(Boolean) || [];
+  // 【名】【形】白（い）のように、複数の品詞ラベルが同じ意味にかかる場合は1つの選択肢として扱う。
+  const labelled = text.match(/(?:【[^】]+】)+[^【]*/g)?.map(v => v.trim()).filter(Boolean) || [];
   if(labelled.length) return labelled;
   return [text];
 }
