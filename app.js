@@ -50,10 +50,6 @@ const shatterLayer = $('shatterLayer');
 const judgeEffect = $('judgeEffect');
 const statsScopeSelect = $('statsScopeSelect');
 const currentBookName = $('currentBookName');
-const currentBookLearnedRate = $('currentBookLearnedRate');
-const currentBookUnitCount = $('currentBookUnitCount');
-const currentBookPartCount = $('currentBookPartCount');
-const currentBookMethodMini = $('currentBookMethodMini');
 
 let catalog = { books:[] };
 let currentBook = null;
@@ -398,24 +394,11 @@ function renderCurrentBookCard(){
   if(!currentBook){
     if(currentBookName) currentBookName.textContent = '公開中の教材がありません';
     if(currentBookMeta) currentBookMeta.textContent = '開発者用アプリから教材を追加・公開してください';
-    if(currentBookLearnedRate) currentBookLearnedRate.textContent = '0%';
-    if(currentBookUnitCount) currentBookUnitCount.textContent = '―';
-    if(currentBookPartCount) currentBookPartCount.textContent = '―';
-    if(currentBookMethodMini) currentBookMethodMini.textContent = '―';
     setThumbnail(currentBookThumbnail, '');
     return;
   }
-  const total = currentBook.total || WORDS.length || 0;
-  const unitCount = Math.max(1, Math.ceil(total / UNIT_SIZE));
-  const partCount = Math.max(1, Math.ceil(total / PART_SIZE));
-  const learned = WORDS.filter(w => progressForWord(w)?.seen > 0).length;
-  const learnedRate = total ? Math.round((learned / total) * 100) : 0;
   if(currentBookName) currentBookName.textContent = currentBook.name;
-  if(currentBookMeta) currentBookMeta.textContent = `${total}語・${unitCount} Unit・${partCount} Part`;
-  if(currentBookLearnedRate) currentBookLearnedRate.textContent = `${learnedRate}%`;
-  if(currentBookUnitCount) currentBookUnitCount.textContent = `${unitCount}`;
-  if(currentBookPartCount) currentBookPartCount.textContent = `${partCount}`;
-  if(currentBookMethodMini) currentBookMethodMini.textContent = modeSummaryText();
+  if(currentBookMeta) currentBookMeta.textContent = `${currentBook.total}語・${Math.ceil(currentBook.total / UNIT_SIZE)} Unit`;
   setThumbnail(currentBookThumbnail, currentBook.thumbnailUrl);
 }
 
@@ -1072,7 +1055,6 @@ function showResult(){
   quizScreen.classList.add('hidden');
   resultScreen.classList.remove('hidden');
   $('scoreText').textContent = `${score} / ${session.length} 問 正解`;
-  renderCurrentBookCard();
   updateUnitInfo();
 }
 
@@ -1153,7 +1135,6 @@ function saveMode(){
   settings.timeLimit = Number(modeTimeSelect.value) || 20;
   saveSettings();
   syncModeUI();
-  renderCurrentBookCard();
   updateUnitInfo();
   $('modeDialog').close();
 }

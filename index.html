@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="/style.css?v=3.4.0" />
+  <link rel="stylesheet" href="/style.css?v=3.3.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -30,7 +30,7 @@
           <p class="eyebrow dark">SELECT BOOK</p>
           <h2>教材を選択</h2>
         </div>
-        <span class="book-select-note">教材カードを選んで学習へ</span>
+        <span class="book-select-note">横にスクロールできます</span>
       </div>
       <label class="book-search-field book-select-search">
         <span>教材を検索</span>
@@ -45,18 +45,12 @@
         <h2>学習メニュー</h2>
         <button id="openModeBtn" class="ghost-btn small">学習の仕方</button>
       </div>
-      <button id="openBookSelectScreenBtn" class="selected-book-card selected-book-dashboard" type="button">
+      <button id="openBookSelectScreenBtn" class="selected-book-card" type="button">
         <div id="currentBookThumbnail" class="selected-book-thumbnail no-image"><span>No Image</span></div>
         <div class="selected-book-copy">
           <span>選択中の教材</span>
           <strong id="currentBookName">基本英単語</strong>
           <small id="currentBookMeta">―</small>
-        </div>
-        <div class="selected-book-detail-grid" aria-hidden="true">
-          <div><span>学習済み</span><strong id="currentBookLearnedRate">0%</strong></div>
-          <div><span>Unit</span><strong id="currentBookUnitCount">―</strong></div>
-          <div><span>Part</span><strong id="currentBookPartCount">―</strong></div>
-          <div><span>現在の設定</span><strong id="currentBookMethodMini">―</strong></div>
         </div>
         <span class="selected-book-action">教材を変更</span>
       </button>
@@ -130,7 +124,7 @@
     </label>
     <div class="book-shelf-head">
       <span>教材一覧</span>
-      <small>教材カードを選んで学習へ</small>
+      <small>横にスクロールできます</small>
     </div>
     <div id="bookGrid" class="book-grid" aria-label="教材一覧"></div>
     <p id="bookEmptyMessage" class="book-empty-message hidden">該当する教材がありません。</p>
@@ -286,7 +280,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="/words.js?v=3.4.0"></script>
-  <script src="/app.js?v=3.4.0"></script>
+  <script src="/words.js?v=3.3.0"></script>
+  <script src="/app.js?v=3.3.0"></script>
 </body>
 </html>
