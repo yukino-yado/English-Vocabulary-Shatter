@@ -649,3 +649,122 @@ body.quiz-active .quiz-actions .primary-btn{padding:10px 24px}
     0 0 0 10px rgba(255,95,127,.13),
     inset 0 1px 0 rgba(255,255,255,.52);
 }
+
+
+/* ver 2.9: 教材選択を横スクロール式の本棚UIへ */
+.book-shelf-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:16px;
+  margin:8px 0 12px;
+  padding:0 2px;
+}
+.book-shelf-head span{
+  color:#172032;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.book-shelf-head small{
+  color:#60708d;
+  font-weight:900;
+}
+.book-dialog .book-grid{
+  display:flex !important;
+  grid-template-columns:none !important;
+  gap:20px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  padding:8px 6px 22px;
+  margin:0 -6px 6px;
+}
+.book-dialog .book-grid::-webkit-scrollbar{
+  height:10px;
+}
+.book-dialog .book-grid::-webkit-scrollbar-track{
+  background:rgba(223,231,242,.78);
+  border-radius:999px;
+}
+.book-dialog .book-grid::-webkit-scrollbar-thumb{
+  background:linear-gradient(90deg,var(--cyan),var(--lavender),var(--pink));
+  border-radius:999px;
+}
+.book-dialog .book-card{
+  flex:0 0 clamp(190px,22vw,250px);
+  min-height:365px;
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:12px;
+  scroll-snap-align:start;
+  padding:12px;
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 20% 12%,rgba(255,255,255,.92),rgba(255,255,255,.18) 28%,transparent 46%),
+    linear-gradient(150deg,#ffffff 0%,#f2f7ff 54%,#ecf1ff 100%);
+  box-shadow:
+    0 20px 44px rgba(17,24,38,.14),
+    inset 0 1px 0 rgba(255,255,255,.78);
+}
+.book-dialog .book-card::before{
+  content:"";
+  position:absolute;
+  inset:12px auto 12px 12px;
+  width:5px;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(125,220,255,.86),rgba(165,140,255,.68),rgba(255,159,209,.62));
+  opacity:.78;
+}
+.book-dialog .book-card:hover{
+  transform:translateY(-4px) scale(1.01);
+}
+.book-dialog .book-card.selected{
+  border-color:rgba(125,220,255,.74);
+  box-shadow:
+    0 0 0 4px rgba(125,220,255,.18),
+    0 24px 54px rgba(46,61,95,.18),
+    inset 0 1px 0 rgba(255,255,255,.9);
+}
+.book-dialog .book-card-thumbnail{
+  width:100%;
+  aspect-ratio:3/4;
+  border-radius:20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72), 0 14px 30px rgba(17,24,38,.12);
+}
+.book-dialog .book-card-thumbnail.no-image{
+  background:
+    linear-gradient(135deg,rgba(125,220,255,.22),rgba(165,140,255,.16)),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 10px,rgba(255,255,255,.08) 10px 20px);
+}
+.book-dialog .book-card-copy{
+  padding:4px 8px 6px 12px;
+  gap:7px;
+}
+.book-dialog .book-card-copy strong{
+  font-size:clamp(18px,2.1vw,24px);
+  line-height:1.32;
+  color:#111826;
+}
+.book-dialog .book-card-copy span{
+  font-size:12px;
+  color:#65718a;
+}
+.book-dialog .book-selected-badge{
+  right:18px;
+  top:18px;
+  background:rgba(17,24,38,.82);
+  border:1px solid rgba(255,255,255,.35);
+  box-shadow:0 10px 24px rgba(17,24,38,.18);
+}
+@media(max-width:860px){
+  .book-dialog .book-grid{grid-template-columns:none !important}
+  .book-dialog .book-card{flex-basis:210px}
+}
+@media(max-width:620px){
+  .book-shelf-head{align-items:flex-start;flex-direction:column;gap:4px}
+  .book-dialog .book-grid{grid-template-columns:none !important;gap:14px;padding-bottom:18px}
+  .book-dialog .book-card{flex-basis:172px;min-height:300px;border-radius:22px;padding:10px}
+  .book-dialog .book-card-thumbnail{border-radius:17px}
+  .book-dialog .book-card-copy strong{font-size:18px}
+}
