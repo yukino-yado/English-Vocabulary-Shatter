@@ -768,3 +768,84 @@ body.quiz-active .quiz-actions .primary-btn{padding:10px 24px}
   .book-dialog .book-card-thumbnail{border-radius:17px}
   .book-dialog .book-card-copy strong{font-size:18px}
 }
+
+
+/* ver 3.0: ホーム画面にも横スクロール式の教材棚を表示 */
+.home-book-shelf{
+  margin:20px 0 22px;
+  padding:18px 18px 16px;
+  border-radius:26px;
+  border:1px solid rgba(255,255,255,.36);
+  background:
+    radial-gradient(circle at 10% 0%,rgba(255,255,255,.72),rgba(255,255,255,.12) 36%,transparent 58%),
+    linear-gradient(145deg,rgba(235,244,255,.86),rgba(245,241,255,.72));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 16px 38px rgba(46,61,95,.10);
+}
+.home-book-shelf-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:14px;
+  margin:0 0 12px;
+}
+.home-book-shelf-head span{
+  color:#172032;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.home-book-shelf-head small{
+  color:#60708d;
+  font-weight:900;
+}
+.home-book-shelf-track{
+  display:flex;
+  gap:18px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  padding:6px 4px 18px;
+  margin:0 -4px;
+}
+.home-book-shelf-track::-webkit-scrollbar{
+  height:9px;
+}
+.home-book-shelf-track::-webkit-scrollbar-track{
+  background:rgba(223,231,242,.78);
+  border-radius:999px;
+}
+.home-book-shelf-track::-webkit-scrollbar-thumb{
+  background:linear-gradient(90deg,var(--cyan),var(--lavender),var(--pink));
+  border-radius:999px;
+}
+.home-book-card{
+  flex:0 0 clamp(160px,18vw,210px);
+  min-height:300px;
+  scroll-snap-align:start;
+  border-radius:24px;
+  padding:11px;
+}
+.home-book-card .book-card-thumbnail{
+  aspect-ratio:3/4;
+  border-radius:18px;
+}
+.home-book-card .book-card-copy{
+  padding:4px 6px 6px;
+}
+.home-book-card .book-card-copy strong{
+  font-size:clamp(16px,1.7vw,21px);
+  line-height:1.32;
+}
+.home-book-card .book-card-copy span{
+  font-size:11px;
+}
+.home-book-card .book-selected-badge{
+  right:16px;
+  top:16px;
+}
+@media(max-width:620px){
+  .home-book-shelf{padding:15px 14px}
+  .home-book-shelf-head{align-items:flex-start;flex-direction:column;gap:3px}
+  .home-book-card{flex-basis:150px;min-height:270px;border-radius:20px}
+}

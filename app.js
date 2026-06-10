@@ -19,8 +19,10 @@ const $ = (id) => document.getElementById(id);
 const currentBookThumbnail = $('currentBookThumbnail');
 const currentBookMeta = $('currentBookMeta');
 const bookGrid = $('bookGrid');
+const homeBookShelf = $('homeBookShelf');
 const bookSearchInput = $('bookSearchInput');
 const bookEmptyMessage = $('bookEmptyMessage');
+const homeBookEmptyMessage = $('homeBookEmptyMessage');
 const unitSelect = $('unitSelect');
 const partSelect = $('partSelect');
 const partField = $('partField');
@@ -376,41 +378,57 @@ function renderCurrentBookCard(){
   setThumbnail(currentBookThumbnail, currentBook.thumbnailUrl);
 }
 
-function renderBookGrid(query = ''){
-  if(!bookGrid) return;
+function createBookCard(book, variant = 'dialog'){
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `book-card${book.id === currentBook?.id ? ' selected' : ''}${variant === 'home' ? ' home-book-card' : ''}`;
+  button.dataset.bookId = book.id;
+
+  const thumbnail = document.createElement('div');
+  thumbnail.className = 'book-card-thumbnail';
+  setThumbnail(thumbnail, book.thumbnailUrl);
+
+  const copy = document.createElement('div');
+  copy.className = 'book-card-copy';
+  const title = document.createElement('strong');
+  title.textContent = book.name;
+  const meta = document.createElement('span');
+  meta.textContent = `${book.total}語・${Math.ceil(book.total / UNIT_SIZE)} Unit・${Math.ceil(book.total / PART_SIZE)} Part`;
+  copy.append(title, meta);
+
+  const badge = document.createElement('span');
+  badge.className = 'book-selected-badge';
+  badge.textContent = book.id === currentBook?.id ? '選択中' : '選択';
+
+  button.append(thumbnail, copy, badge);
+  return button;
+}
+
+function renderBookShelf(target, books, emptyMessage, variant = 'dialog'){
+  if(!target) return;
+  target.innerHTML = '';
+  books.forEach(book => target.appendChild(createBookCard(book, variant)));
+  if(emptyMessage) emptyMessage.classList.toggle('hidden', books.length > 0);
+}
+
+function filteredBooks(query = ''){
   const normalizedQuery = normalizeWordIdentity(query);
-  const books = catalog.books.filter(book => !normalizedQuery || normalizeWordIdentity(book.name).includes(normalizedQuery));
-  bookGrid.innerHTML = '';
-  books.forEach(book => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `book-card${book.id === currentBook?.id ? ' selected' : ''}`;
-    button.dataset.bookId = book.id;
+  return catalog.books.filter(book => !normalizedQuery || normalizeWordIdentity(book.name).includes(normalizedQuery));
+}
 
-    const thumbnail = document.createElement('div');
-    thumbnail.className = 'book-card-thumbnail';
-    setThumbnail(thumbnail, book.thumbnailUrl);
+function renderBookGrid(query = ''){
+  const books = filteredBooks(query);
+  renderBookShelf(bookGrid, books, bookEmptyMessage, 'dialog');
+}
 
-    const copy = document.createElement('div');
-    copy.className = 'book-card-copy';
-    const title = document.createElement('strong');
-    title.textContent = book.name;
-    const meta = document.createElement('span');
-    meta.textContent = `${book.total}語・${Math.ceil(book.total / UNIT_SIZE)} Unit・${Math.ceil(book.total / PART_SIZE)} Part`;
-    copy.append(title, meta);
-
-    const badge = document.createElement('span');
-    badge.className = 'book-selected-badge';
-    badge.textContent = book.id === currentBook?.id ? '選択中' : '選択';
-    button.append(thumbnail, copy, badge);
-    bookGrid.appendChild(button);
-  });
-  if(bookEmptyMessage) bookEmptyMessage.classList.toggle('hidden', books.length > 0);
+function renderHomeBookShelf(){
+  renderBookShelf(homeBookShelf, catalog.books, homeBookEmptyMessage, 'home');
 }
 
 function initBooks(){
   renderCurrentBookCard();
   renderBookGrid(bookSearchInput?.value || '');
+  renderHomeBookShelf();
 }
 
 function openBookDialog(){
@@ -427,6 +445,7 @@ function chooseBook(bookId){
   settings.selectedPart = 1;
   initUnits();
   renderBookGrid(bookSearchInput?.value || '');
+  renderHomeBookShelf();
   $('bookDialog').close();
 }
 
@@ -1105,6 +1124,10 @@ $('openBookDialogBtn').addEventListener('click', openBookDialog);
 $('closeBookDialogBtn').addEventListener('click', () => $('bookDialog').close());
 bookSearchInput?.addEventListener('input', () => renderBookGrid(bookSearchInput.value));
 bookGrid?.addEventListener('click', event => {
+  const card = event.target.closest('[data-book-id]');
+  if(card) chooseBook(card.dataset.bookId);
+});
+homeBookShelf?.addEventListener('click', event => {
   const card = event.target.closest('[data-book-id]');
   if(card) chooseBook(card.dataset.bookId);
 });

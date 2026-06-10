@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="/style.css?v=2.9.0" />
+  <link rel="stylesheet" href="/style.css?v=3.0.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -38,6 +38,14 @@
         </div>
         <span class="selected-book-action">教材を選択</span>
       </button>
+      <section class="home-book-shelf" aria-label="教材一覧">
+        <div class="home-book-shelf-head">
+          <span>教材を選択</span>
+          <small>横にスクロールできます</small>
+        </div>
+        <div id="homeBookShelf" class="home-book-shelf-track"></div>
+        <p id="homeBookEmptyMessage" class="book-empty-message hidden">公開中の教材がありません。</p>
+      </section>
       <div class="controls range-controls">
         <label>
           <span>Unit</span>
@@ -264,7 +272,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="/words.js?v=2.9.0"></script>
-  <script src="/app.js?v=2.9.0"></script>
+  <script src="/words.js?v=3.0.0"></script>
+  <script src="/app.js?v=3.0.0"></script>
 </body>
 </html>
