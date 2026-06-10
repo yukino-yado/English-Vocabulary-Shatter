@@ -19,10 +19,14 @@ const $ = (id) => document.getElementById(id);
 const currentBookThumbnail = $('currentBookThumbnail');
 const currentBookMeta = $('currentBookMeta');
 const bookGrid = $('bookGrid');
+const bookSelectScreen = $('bookSelectScreen');
+const bookSelectGrid = $('bookSelectGrid');
+const bookSelectSearchInput = $('bookSelectSearchInput');
 const homeBookShelf = $('homeBookShelf');
 const bookSearchInput = $('bookSearchInput');
 const bookEmptyMessage = $('bookEmptyMessage');
 const homeBookEmptyMessage = $('homeBookEmptyMessage');
+const bookSelectEmptyMessage = $('bookSelectEmptyMessage');
 const unitSelect = $('unitSelect');
 const partSelect = $('partSelect');
 const partField = $('partField');
@@ -366,6 +370,26 @@ function setThumbnail(container, dataUrl){
   }
 }
 
+function showBookSelectScreen(){
+  clearTimer();
+  document.body.classList.remove('quiz-active');
+  if(bookSelectScreen) bookSelectScreen.classList.remove('hidden');
+  menuScreen.classList.add('hidden');
+  quizScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  renderBookSelectGrid(bookSelectSearchInput?.value || '');
+  setTimeout(() => bookSelectSearchInput?.focus(), 0);
+}
+
+function showMenuScreen(){
+  if(bookSelectScreen) bookSelectScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  quizScreen.classList.add('hidden');
+  menuScreen.classList.remove('hidden');
+  renderCurrentBookCard();
+  updateUnitInfo();
+}
+
 function renderCurrentBookCard(){
   if(!currentBook){
     if(currentBookName) currentBookName.textContent = '公開中の教材がありません';
@@ -421,6 +445,11 @@ function renderBookGrid(query = ''){
   renderBookShelf(bookGrid, books, bookEmptyMessage, 'dialog');
 }
 
+function renderBookSelectGrid(query = ''){
+  const books = filteredBooks(query);
+  renderBookShelf(bookSelectGrid, books, bookSelectEmptyMessage, 'select');
+}
+
 function renderHomeBookShelf(){
   renderBookShelf(homeBookShelf, catalog.books, homeBookEmptyMessage, 'home');
 }
@@ -428,6 +457,7 @@ function renderHomeBookShelf(){
 function initBooks(){
   renderCurrentBookCard();
   renderBookGrid(bookSearchInput?.value || '');
+  renderBookSelectGrid(bookSelectSearchInput?.value || '');
   renderHomeBookShelf();
 }
 
@@ -445,8 +475,10 @@ function chooseBook(bookId){
   settings.selectedPart = 1;
   initUnits();
   renderBookGrid(bookSearchInput?.value || '');
+  renderBookSelectGrid(bookSelectSearchInput?.value || '');
   renderHomeBookShelf();
-  $('bookDialog').close();
+  try { if($('bookDialog')?.open) $('bookDialog').close(); } catch {}
+  showMenuScreen();
 }
 
 function unitRange(unit){
@@ -1120,10 +1152,16 @@ function resetProgress(){
 }
 
 syncModeUI();
-$('openBookDialogBtn').addEventListener('click', openBookDialog);
+if($('openBookDialogBtn')) $('openBookDialogBtn').addEventListener('click', openBookDialog);
+if($('openBookSelectScreenBtn')) $('openBookSelectScreenBtn').addEventListener('click', showBookSelectScreen);
 $('closeBookDialogBtn').addEventListener('click', () => $('bookDialog').close());
 bookSearchInput?.addEventListener('input', () => renderBookGrid(bookSearchInput.value));
+bookSelectSearchInput?.addEventListener('input', () => renderBookSelectGrid(bookSelectSearchInput.value));
 bookGrid?.addEventListener('click', event => {
+  const card = event.target.closest('[data-book-id]');
+  if(card) chooseBook(card.dataset.bookId);
+});
+bookSelectGrid?.addEventListener('click', event => {
   const card = event.target.closest('[data-book-id]');
   if(card) chooseBook(card.dataset.bookId);
 });
@@ -1149,15 +1187,11 @@ $('nextBtn').addEventListener('click', nextQuestion);
 $('backBtn').addEventListener('click', () => {
   clearTimer();
   document.body.classList.remove('quiz-active');
-  quizScreen.classList.add('hidden');
-  menuScreen.classList.remove('hidden');
-  updateUnitInfo();
+  showMenuScreen();
 });
 $('retryBtn').addEventListener('click', () => {
   document.body.classList.remove('quiz-active');
-  resultScreen.classList.add('hidden');
-  menuScreen.classList.remove('hidden');
-  updateUnitInfo();
+  showMenuScreen();
 });
 $('openStatsBtn').addEventListener('click', openStats);
 $('closeStatsBtn').addEventListener('click', () => $('statsDialog').close());
@@ -1176,4 +1210,5 @@ $('saveModeBtn').addEventListener('click', saveMode);
   await loadPublishedWords();
   initBooks();
   initUnits();
+  showBookSelectScreen();
 })();

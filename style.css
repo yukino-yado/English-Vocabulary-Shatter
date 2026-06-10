@@ -849,3 +849,85 @@ body.quiz-active .quiz-actions .primary-btn{padding:10px 24px}
   .home-book-shelf-head{align-items:flex-start;flex-direction:column;gap:3px}
   .home-book-card{flex-basis:150px;min-height:270px;border-radius:20px}
 }
+
+
+/* ver 3.1: 「選択中の教材」大型カードを削除したため、教材棚を上に詰める */
+.menu-card .home-book-shelf{
+  margin-top:16px;
+}
+
+
+/* ver 3.2: 教材選択を独立画面化し、選択後はホームへ遷移 */
+.book-select-screen{
+  padding:30px;
+}
+.book-select-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:18px;
+  margin-bottom:18px;
+}
+.book-select-title h2{
+  margin:4px 0 0;
+  font-size:clamp(30px,4.5vw,48px);
+  color:#111826;
+}
+.eyebrow.dark{
+  color:#53617d;
+}
+.book-select-note{
+  padding:10px 16px;
+  border-radius:999px;
+  color:#fff;
+  font-weight:900;
+  background:rgba(17,24,38,.82);
+  box-shadow:0 12px 28px rgba(17,24,38,.16);
+}
+.book-select-search{
+  margin:18px 0 16px;
+}
+.book-select-screen .book-select-grid{
+  display:flex !important;
+  grid-template-columns:none !important;
+  gap:22px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  padding:10px 6px 24px;
+  margin:0 -6px 4px;
+}
+.book-select-screen .book-select-grid::-webkit-scrollbar{
+  height:10px;
+}
+.book-select-screen .book-select-grid::-webkit-scrollbar-track{
+  background:rgba(223,231,242,.78);
+  border-radius:999px;
+}
+.book-select-screen .book-select-grid::-webkit-scrollbar-thumb{
+  background:linear-gradient(90deg,var(--cyan),var(--lavender),var(--pink));
+  border-radius:999px;
+}
+.book-select-screen .book-card{
+  flex:0 0 clamp(190px,21vw,245px);
+  min-height:360px;
+  scroll-snap-align:start;
+}
+.book-select-screen .book-card-thumbnail{
+  aspect-ratio:3/4;
+  border-radius:20px;
+}
+.book-select-screen .book-card-copy strong{
+  font-size:clamp(18px,2vw,24px);
+  line-height:1.32;
+}
+.menu-card .selected-book-card{
+  margin:18px 0 22px;
+}
+@media(max-width:720px){
+  .book-select-screen{padding:22px}
+  .book-select-title{align-items:flex-start;flex-direction:column}
+  .book-select-note{font-size:13px}
+  .book-select-screen .book-card{flex-basis:170px;min-height:300px}
+}

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="/style.css?v=3.0.0" />
+  <link rel="stylesheet" href="/style.css?v=3.2.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -24,28 +24,36 @@
   </header>
 
   <main class="layout">
-    <section id="menuScreen" class="card menu-card">
+    <section id="bookSelectScreen" class="card book-select-screen">
+      <div class="book-select-title">
+        <div>
+          <p class="eyebrow dark">SELECT BOOK</p>
+          <h2>教材を選択</h2>
+        </div>
+        <span class="book-select-note">横にスクロールできます</span>
+      </div>
+      <label class="book-search-field book-select-search">
+        <span>教材を検索</span>
+        <input id="bookSelectSearchInput" type="search" placeholder="教材名を入力" autocomplete="off" />
+      </label>
+      <div id="bookSelectGrid" class="book-grid book-select-grid" aria-label="教材一覧"></div>
+      <p id="bookSelectEmptyMessage" class="book-empty-message hidden">公開中の教材がありません。</p>
+    </section>
+
+    <section id="menuScreen" class="card menu-card hidden">
       <div class="menu-title-row">
         <h2>学習メニュー</h2>
         <button id="openModeBtn" class="ghost-btn small">学習の仕方</button>
       </div>
-      <button id="openBookDialogBtn" class="selected-book-card" type="button">
+      <button id="openBookSelectScreenBtn" class="selected-book-card" type="button">
         <div id="currentBookThumbnail" class="selected-book-thumbnail no-image"><span>No Image</span></div>
         <div class="selected-book-copy">
           <span>選択中の教材</span>
           <strong id="currentBookName">基本英単語</strong>
           <small id="currentBookMeta">―</small>
         </div>
-        <span class="selected-book-action">教材を選択</span>
+        <span class="selected-book-action">教材を変更</span>
       </button>
-      <section class="home-book-shelf" aria-label="教材一覧">
-        <div class="home-book-shelf-head">
-          <span>教材を選択</span>
-          <small>横にスクロールできます</small>
-        </div>
-        <div id="homeBookShelf" class="home-book-shelf-track"></div>
-        <p id="homeBookEmptyMessage" class="book-empty-message hidden">公開中の教材がありません。</p>
-      </section>
       <div class="controls range-controls">
         <label>
           <span>Unit</span>
@@ -272,7 +280,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="/words.js?v=3.0.0"></script>
-  <script src="/app.js?v=3.0.0"></script>
+  <script src="/words.js?v=3.2.0"></script>
+  <script src="/app.js?v=3.2.0"></script>
 </body>
 </html>
