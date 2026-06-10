@@ -931,3 +931,44 @@ body.quiz-active .quiz-actions .primary-btn{padding:10px 24px}
   .book-select-note{font-size:13px}
   .book-select-screen .book-card{flex-basis:170px;min-height:300px}
 }
+
+
+/* ver 3.5: ver3.3ベースに戻し、教材選択画面は16:9サムネイルのみ表示 */
+.book-select-screen .book-select-grid{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr)) !important;
+  gap:18px;
+  overflow:visible;
+  padding:6px 0 8px;
+  margin:0;
+}
+.book-select-screen .book-select-grid::-webkit-scrollbar{
+  display:none;
+}
+.book-select-screen .book-card{
+  min-height:auto;
+  display:block;
+  padding:10px;
+  border-radius:24px;
+  scroll-snap-align:none;
+}
+.book-select-screen .book-card::before{
+  display:none;
+}
+.book-select-screen .book-card-thumbnail{
+  width:100%;
+  aspect-ratio:16/9;
+  border-radius:18px;
+}
+.book-select-screen .book-card-copy{
+  display:none;
+}
+.book-select-screen .book-selected-badge{
+  right:16px;
+  top:16px;
+}
+@media(max-width:640px){
+  .book-select-screen .book-select-grid{
+    grid-template-columns:1fr !important;
+  }
+}
