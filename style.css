@@ -931,3 +931,130 @@ body.quiz-active .quiz-actions .primary-btn{padding:10px 24px}
   .book-select-note{font-size:13px}
   .book-select-screen .book-card{flex-basis:170px;min-height:300px}
 }
+
+
+/* ver 3.4: 教材選択画面をアプリ風カード一覧へ、選択中教材欄を情報密度高めに調整 */
+.book-select-note{
+  background:linear-gradient(135deg,#111826,#303956);
+}
+.book-select-screen .book-select-grid{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr)) !important;
+  gap:18px;
+  overflow:visible;
+  padding:4px 0 6px;
+  margin:0;
+}
+.book-select-screen .book-select-grid::-webkit-scrollbar{
+  display:none;
+}
+.book-select-screen .book-card{
+  min-height:0;
+  display:grid;
+  grid-template-columns:116px minmax(0,1fr);
+  grid-template-rows:auto;
+  align-items:stretch;
+  gap:16px;
+  padding:14px;
+  border-radius:24px;
+  scroll-snap-align:none;
+}
+.book-select-screen .book-card::before{
+  content:"";
+  position:absolute;
+  inset:14px auto 14px 14px;
+  width:4px;
+  border-radius:999px;
+  background:linear-gradient(180deg,var(--cyan),var(--lavender),var(--pink));
+  opacity:.7;
+}
+.book-select-screen .book-card-thumbnail{
+  width:100%;
+  aspect-ratio:1/1;
+  border-radius:18px;
+  z-index:1;
+}
+.book-select-screen .book-card-copy{
+  align-self:center;
+  padding:6px 8px 6px 0;
+  gap:8px;
+  z-index:1;
+}
+.book-select-screen .book-card-copy strong{
+  font-size:clamp(19px,2.2vw,26px);
+  line-height:1.35;
+}
+.book-select-screen .book-card-copy span{
+  font-size:13px;
+}
+.book-select-screen .book-selected-badge{
+  right:16px;
+  top:16px;
+}
+.selected-book-dashboard{
+  grid-template-columns:132px minmax(220px,1fr) minmax(320px,1.2fr) auto;
+  align-items:center;
+}
+.selected-book-dashboard .selected-book-thumbnail{
+  aspect-ratio:1/1;
+}
+.selected-book-detail-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.selected-book-detail-grid div{
+  min-width:0;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(255,255,255,.66);
+  border:1px solid rgba(91,120,167,.14);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.64);
+}
+.selected-book-detail-grid span{
+  display:block;
+  margin-bottom:4px;
+  color:#68758f;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.selected-book-detail-grid strong{
+  display:block;
+  color:#111826;
+  font-size:17px;
+  line-height:1.35;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.selected-book-detail-grid div:last-child{
+  grid-column:1/-1;
+}
+@media(max-width:960px){
+  .selected-book-dashboard{
+    grid-template-columns:112px minmax(0,1fr);
+  }
+  .selected-book-detail-grid{
+    grid-column:1/-1;
+  }
+  .selected-book-dashboard .selected-book-action{
+    grid-column:1/-1;
+    text-align:center;
+  }
+}
+@media(max-width:640px){
+  .book-select-screen .book-select-grid{
+    grid-template-columns:1fr !important;
+  }
+  .book-select-screen .book-card{
+    grid-template-columns:94px minmax(0,1fr);
+    gap:12px;
+  }
+  .selected-book-detail-grid{
+    grid-template-columns:1fr 1fr;
+  }
+  .selected-book-detail-grid strong{
+    font-size:15px;
+  }
+}
