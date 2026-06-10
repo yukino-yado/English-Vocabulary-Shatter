@@ -131,7 +131,7 @@ function updateMetadataControls(){
   box.classList.toggle('hidden', !editing);
   if(editing){
     const target = $('metadataEditTarget');
-    if(target) target.textContent = `「${metadataEditingBookName || '教材'}」のタイトルとサムネイルを変更できます。`;
+    if(target) target.textContent = `「${metadataEditingBookName || '教材'}」のタイトルと教材選択画面用画像を変更できます。`;
   }
 }
 
@@ -158,13 +158,13 @@ function startMetadataEdit(bookId, bookName, thumbnailUrl){
   metadataEditingBookName = bookName || '';
   $('bookNameInput').value = bookName || '';
   thumbnailDataUrl = thumbnailUrl || '';
-  thumbnailFileName = thumbnailUrl ? '現在のサムネイル' : '';
+  thumbnailFileName = thumbnailUrl ? '現在の教材選択画面用画像' : '';
   thumbnailAction = 'preserve';
   $('thumbnailInput').value = '';
   renderThumbnailPreview();
   updatePreviewBookName();
-  setMessage('metadataMessage', `「${bookName || '教材'}」のタイトル・サムネイルを変更できます。`, 'success');
-  setMessage('thumbnailMessage', '新しい画像を選択しない場合、現在のサムネイルを保持します。', '');
+  setMessage('metadataMessage', `「${bookName || '教材'}」のタイトル・教材選択画面用画像を変更できます。`, 'success');
+  setMessage('thumbnailMessage', '新しい画像を選択しない場合、現在の教材選択画面用画像を保持します。', '');
   document.querySelector('.upload-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
@@ -400,18 +400,18 @@ ${detail}`)) return;
 async function updateThumbnailOnly(){
   const target = selectedThumbnailTarget();
   if(!target || !target.id){
-    setMessage('thumbnailMessage', '教材一覧の「タイトル・サムネイル変更」を押すか、学習メニュー名に既存の教材名を入力してください。', 'error');
+    setMessage('thumbnailMessage', '教材一覧の「タイトル・画像変更」を押すか、学習メニュー名に既存の教材名を入力してください。', 'error');
     return;
   }
   if(!['replace','remove'].includes(thumbnailAction)){
-    setMessage('thumbnailMessage', '更新するサムネイル画像を選択してください。No Imageにする場合は「サムネイルを外す」を押してください。', 'error');
+    setMessage('thumbnailMessage', '更新する教材選択画面用画像を選択してください。No Imageにする場合は「画像を外す」を押してください。', 'error');
     return;
   }
-  const label = thumbnailAction === 'replace' ? 'サムネイルを更新' : 'サムネイルをNo Imageへ変更';
+  const label = thumbnailAction === 'replace' ? '教材選択画面用画像を更新' : '教材選択画面用画像をNo Imageへ変更';
   if(!confirm(`「${target.name}」の${label}を行いますか？`)) return;
   const button = $('thumbnailUpdateBtn');
   if(button) button.disabled = true;
-  setMessage('thumbnailMessage', 'サムネイルを更新しています…', 'loading');
+  setMessage('thumbnailMessage', '教材選択画面用画像を更新しています…', 'loading');
   try{
     await requestJson('/api/admin-book-action', {
       method:'POST',
@@ -424,11 +424,11 @@ async function updateThumbnailOnly(){
         thumbnailDataUrl:thumbnailAction === 'replace' ? thumbnailDataUrl : '',
       }),
     });
-    setMessage('thumbnailMessage', `「${target.name}」のサムネイルを更新しました。`, 'success');
+    setMessage('thumbnailMessage', `「${target.name}」の教材選択画面用画像を更新しました。`, 'success');
     resetThumbnailAfterPublish();
     await loadCurrentData();
   }catch(error){
-    setMessage('thumbnailMessage', error.message || 'サムネイルの更新に失敗しました。', 'error');
+    setMessage('thumbnailMessage', error.message || '教材選択画面用画像の更新に失敗しました。', 'error');
   }finally{
     if(button) button.disabled = false;
   }
@@ -445,7 +445,7 @@ async function updateBookMetadata(){
     $('bookNameInput').focus();
     return;
   }
-  const label = thumbnailAction === 'replace' ? 'サムネイルも更新' : thumbnailAction === 'remove' ? 'サムネイルをNo Imageへ変更' : 'サムネイルは保持';
+  const label = thumbnailAction === 'replace' ? '教材選択画面用画像も更新' : thumbnailAction === 'remove' ? '教材選択画面用画像をNo Imageへ変更' : '教材選択画面用画像は保持';
   if(!confirm(`「${metadataEditingBookName || '教材'}」の教材情報を更新しますか？
 新しい表示名：${bookName}
 ${label}`)) return;

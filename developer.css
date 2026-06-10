@@ -100,3 +100,23 @@ dialog{max-width:560px;width:calc(100% - 32px);padding:26px;border:0;border-radi
   .thumbnail-action-row{align-items:stretch}
   .thumbnail-update-btn{width:100%}
 }
+
+/* ver 3.3: 教材選択画面用画像の説明 */
+.thumbnail-guide{
+  margin-top:12px;
+  padding:14px 16px;
+  border-radius:18px;
+  border:1px solid rgba(91,120,167,.16);
+  background:linear-gradient(135deg,rgba(238,247,255,.96),rgba(247,242,255,.96));
+}
+.thumbnail-guide strong{
+  display:block;
+  color:#172032;
+  font-weight:900;
+  margin-bottom:4px;
+}
+.thumbnail-guide p{
+  margin:0;
+  color:#53617d;
+  line-height:1.7;
+}

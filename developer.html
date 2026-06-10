@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>英単語シャッター｜開発者メニュー</title>
-  <link rel="stylesheet" href="/developer.css?v=3.2.0" />
+  <link rel="stylesheet" href="/developer.css?v=3.3.0" />
 </head>
 <body>
   <header class="dev-header">
@@ -71,24 +71,30 @@
         <section class="thumbnail-upload-section">
           <div class="thumbnail-section-head">
             <div>
-              <strong>教材サムネイル（任意）</strong>
-              <p>生徒側の教材選択画面に表示されます。設定しない場合は「No Image」と表示されます。</p>
+              <strong>教材選択画面に表示する画像（任意）</strong>
+              <p>生徒側の教材選択画面とホーム画面の教材カードに表示されます。設定しない場合は「No Image」と表示されます。</p>
             </div>
-            <button id="removeThumbnailBtn" class="ghost-btn thumbnail-remove-btn" type="button">サムネイルを外す</button>
+            <button id="removeThumbnailBtn" class="ghost-btn thumbnail-remove-btn" type="button">画像を外す</button>
           </div>
           <label class="thumbnail-drop" id="thumbnailDrop">
             <input id="thumbnailInput" type="file" accept="image/png,image/jpeg,image/webp" />
             <div id="thumbnailPreview" class="thumbnail-preview no-image"><span>No Image</span></div>
             <div class="thumbnail-drop-copy">
-              <strong>サムネイル画像を選択</strong>
-              <span>PNG・JPEG・WebP／自動で軽量化</span>
+              <strong>教材選択画面用の画像を選択</strong>
+              <span>PNG・JPEG・WebP／教材カード用に自動で軽量化</span>
             </div>
           </label>
           <div class="thumbnail-action-row">
-            <button id="thumbnailUpdateBtn" class="primary-btn thumbnail-update-btn" type="button">サムネイルを更新する</button>
-            <small>教材一覧の「タイトル・サムネイル変更」を押してから画像を選ぶと、その教材だけを更新できます。</small>
+            <button id="thumbnailUpdateBtn" class="primary-btn thumbnail-update-btn" type="button">教材選択画面の画像を更新する</button>
+            <small>教材一覧の「タイトル・画像変更」を押してから画像を選ぶと、その教材選択画面の画像だけを更新できます。</small>
           </div>
           <p id="thumbnailMessage" class="message"></p>
+
+        <div class="guide-box thumbnail-guide">
+          <strong>この画像は教材選択画面のカードに表示されます</strong>
+          <p>画像を設定すると、生徒側の教材選択画面の教材カードと、ホーム画面の選択中教材カードに反映されます。</p>
+        </div>
+
         </section>
 
         <p id="parseMessage" class="message"></p>
@@ -96,9 +102,9 @@
         <div class="metadata-update-box hidden" id="metadataUpdateBox">
           <div>
             <strong>教材情報を変更中</strong>
-            <p id="metadataEditTarget">選択中の教材名とサムネイルだけを更新できます。</p>
+            <p id="metadataEditTarget">選択中の教材名と教材選択画面用画像だけを更新できます。</p>
           </div>
-          <button id="metadataUpdateBtn" class="primary-btn" type="button">教材情報だけ更新する</button>
+          <button id="metadataUpdateBtn" class="primary-btn" type="button">教材名・画像を更新する</button>
           <button id="metadataCancelBtn" class="ghost-btn" type="button">やめる</button>
         </div>
         <p id="metadataMessage" class="message"></p>
@@ -109,7 +115,7 @@
             <div><span>ファイル</span><strong id="previewFilename">―</strong></div>
             <div><span>読み取り元</span><strong id="previewSheet">―</strong></div>
             <div><span>読み取った単語</span><strong id="previewTotal">―</strong></div>
-            <div><span>サムネイル</span><strong id="previewThumbnailName">No Image</strong></div>
+            <div><span>教材選択画面の画像</span><strong id="previewThumbnailName">No Image</strong></div>
           </div>
 
           <div class="publish-mode">
@@ -173,6 +179,6 @@
   </dialog>
 
   <noscript><div class="noscript-warning">JavaScriptが無効になっています。ブラウザのJavaScriptを有効にしてください。</div></noscript>
-  <script src="/developer.js?v=3.2.0" defer></script>
+  <script src="/developer.js?v=3.3.0" defer></script>
 </body>
 </html>
