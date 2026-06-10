@@ -6,6 +6,7 @@ let thumbnailFileName = '';
 let thumbnailAction = 'preserve';
 let metadataEditingBookId = '';
 let metadataEditingBookName = '';
+let currentBooksCache = [];
 
 function setSystemStatus(text = '', type = ''){
   const el = $('developerSystemStatus');
@@ -73,7 +74,8 @@ async function loadCurrentData(providedData = null){
   $('currentBookList').innerHTML = '';
   try{
     const data = providedData || await requestJson(`/api/words?includeArchived=1&_=${Date.now()}`, { cache:'no-store' });
-    const books = Array.isArray(data.books) ? data.books : [{ name:data.bookName || '基本英単語', total:data.total || data.words?.length || 0, updatedAt:data.updatedAt, sourceName:data.sourceName, thumbnailUrl:data.thumbnailUrl || data.thumbnailDataUrl }];
+    const books = Array.isArray(data.books) ? data.books : [{ id:data.bookId || 'book:default', name:data.bookName || '基本英単語', total:data.total || data.words?.length || 0, updatedAt:data.updatedAt, sourceName:data.sourceName, thumbnailUrl:data.thumbnailUrl || data.thumbnailDataUrl }];
+    currentBooksCache = books;
     const totalWords = Number(data.totalWords || books.reduce((sum, book) => sum + Number(book.total || book.words?.length || 0), 0));
     const archivedCount = books.filter(book => book.archived).length;
     const activeCount = books.length - archivedCount;
@@ -138,6 +140,18 @@ function clearMetadataEditMode(){
   metadataEditingBookName = '';
   updateMetadataControls();
 }
+
+function selectedThumbnailTarget(){
+  if(metadataEditingBookId){
+    const fromCache = currentBooksCache.find(book => String(book.id || '') === String(metadataEditingBookId));
+    return { id:metadataEditingBookId, name:fromCache?.name || metadataEditingBookName || selectedBookName() || '教材' };
+  }
+  const inputName = selectedBookName();
+  if(!inputName) return null;
+  const exact = currentBooksCache.find(book => String(book.name || '').trim() === inputName);
+  return exact ? { id:exact.id, name:exact.name } : null;
+}
+
 
 function startMetadataEdit(bookId, bookName, thumbnailUrl){
   metadataEditingBookId = bookId || '';
@@ -383,6 +397,43 @@ ${detail}`)) return;
   }
 }
 
+async function updateThumbnailOnly(){
+  const target = selectedThumbnailTarget();
+  if(!target || !target.id){
+    setMessage('thumbnailMessage', '教材一覧の「タイトル・サムネイル変更」を押すか、学習メニュー名に既存の教材名を入力してください。', 'error');
+    return;
+  }
+  if(!['replace','remove'].includes(thumbnailAction)){
+    setMessage('thumbnailMessage', '更新するサムネイル画像を選択してください。No Imageにする場合は「サムネイルを外す」を押してください。', 'error');
+    return;
+  }
+  const label = thumbnailAction === 'replace' ? 'サムネイルを更新' : 'サムネイルをNo Imageへ変更';
+  if(!confirm(`「${target.name}」の${label}を行いますか？`)) return;
+  const button = $('thumbnailUpdateBtn');
+  if(button) button.disabled = true;
+  setMessage('thumbnailMessage', 'サムネイルを更新しています…', 'loading');
+  try{
+    await requestJson('/api/admin-book-action', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        action:'updateMeta',
+        bookId:target.id,
+        bookName:target.name,
+        thumbnailAction,
+        thumbnailDataUrl:thumbnailAction === 'replace' ? thumbnailDataUrl : '',
+      }),
+    });
+    setMessage('thumbnailMessage', `「${target.name}」のサムネイルを更新しました。`, 'success');
+    resetThumbnailAfterPublish();
+    await loadCurrentData();
+  }catch(error){
+    setMessage('thumbnailMessage', error.message || 'サムネイルの更新に失敗しました。', 'error');
+  }finally{
+    if(button) button.disabled = false;
+  }
+}
+
 async function updateBookMetadata(){
   if(!metadataEditingBookId){
     setMessage('metadataMessage', '変更する教材を選択してください。', 'error');
@@ -441,6 +492,7 @@ $('refreshCurrentBtn').addEventListener('click', loadCurrentData);
 $('fileInput').addEventListener('change', event => parseFile(event.target.files?.[0]));
 $('thumbnailInput').addEventListener('change', event => parseThumbnail(event.target.files?.[0]));
 $('removeThumbnailBtn').addEventListener('click', removeThumbnail);
+$('thumbnailUpdateBtn').addEventListener('click', updateThumbnailOnly);
 $('metadataUpdateBtn').addEventListener('click', updateBookMetadata);
 $('metadataCancelBtn').addEventListener('click', cancelMetadataEdit);
 $('bookNameInput').addEventListener('input', updatePreviewBookName);

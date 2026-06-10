@@ -77,3 +77,26 @@ dialog{max-width:560px;width:calc(100% - 32px);padding:26px;border:0;border-radi
 @media(max-width:720px){.metadata-update-box{align-items:stretch;flex-direction:column}.metadata-update-box .primary-btn,.metadata-update-box .ghost-btn{width:100%}}
 
 /* build: english_vocab_shatte_ver_2.4 */
+
+/* ver 2.8: サムネイル単体更新 */
+.thumbnail-action-row{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  margin:12px 0 4px;
+}
+.thumbnail-action-row small{
+  color:#60708d;
+  line-height:1.6;
+  flex:1;
+  min-width:240px;
+}
+.thumbnail-update-btn{
+  padding:12px 22px;
+  background:linear-gradient(135deg,#111826,#2c3550 38%,#6f56c9 72%,#95e0ff);
+}
+@media(max-width:720px){
+  .thumbnail-action-row{align-items:stretch}
+  .thumbnail-update-btn{width:100%}
+}
