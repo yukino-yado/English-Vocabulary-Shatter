@@ -22,6 +22,10 @@ const bookGrid = $('bookGrid');
 const bookSelectScreen = $('bookSelectScreen');
 const bookSelectGrid = $('bookSelectGrid');
 const bookSelectSearchInput = $('bookSelectSearchInput');
+const bookSelectPager = $('bookSelectPager');
+const bookSelectPageInfo = $('bookSelectPageInfo');
+const bookSelectPrevBtn = $('bookSelectPrevBtn');
+const bookSelectNextBtn = $('bookSelectNextBtn');
 const homeBookShelf = $('homeBookShelf');
 const bookSearchInput = $('bookSearchInput');
 const bookEmptyMessage = $('bookEmptyMessage');
@@ -63,6 +67,8 @@ let answered = false;
 let settings = loadSettings();
 let timerId = null;
 let timeLeft = settings.timeLimit || 20;
+let bookSelectPage = 1;
+const BOOK_SELECT_PAGE_SIZE = 9;
 
 function safeReadStorage(key){
   try {
@@ -447,7 +453,15 @@ function renderBookGrid(query = ''){
 
 function renderBookSelectGrid(query = ''){
   const books = filteredBooks(query);
-  renderBookShelf(bookSelectGrid, books, bookSelectEmptyMessage, 'select');
+  const totalPages = Math.max(1, Math.ceil(books.length / BOOK_SELECT_PAGE_SIZE));
+  bookSelectPage = Math.min(Math.max(bookSelectPage, 1), totalPages);
+  const start = (bookSelectPage - 1) * BOOK_SELECT_PAGE_SIZE;
+  const pageBooks = books.slice(start, start + BOOK_SELECT_PAGE_SIZE);
+  renderBookShelf(bookSelectGrid, pageBooks, bookSelectEmptyMessage, 'select');
+  if(bookSelectPager) bookSelectPager.classList.toggle('hidden', books.length <= BOOK_SELECT_PAGE_SIZE);
+  if(bookSelectPageInfo) bookSelectPageInfo.textContent = `${bookSelectPage} / ${totalPages}`;
+  if(bookSelectPrevBtn) bookSelectPrevBtn.disabled = bookSelectPage <= 1;
+  if(bookSelectNextBtn) bookSelectNextBtn.disabled = bookSelectPage >= totalPages;
 }
 
 function renderHomeBookShelf(){
@@ -1156,7 +1170,18 @@ if($('openBookDialogBtn')) $('openBookDialogBtn').addEventListener('click', open
 if($('openBookSelectScreenBtn')) $('openBookSelectScreenBtn').addEventListener('click', showBookSelectScreen);
 $('closeBookDialogBtn').addEventListener('click', () => $('bookDialog').close());
 bookSearchInput?.addEventListener('input', () => renderBookGrid(bookSearchInput.value));
-bookSelectSearchInput?.addEventListener('input', () => renderBookSelectGrid(bookSelectSearchInput.value));
+bookSelectSearchInput?.addEventListener('input', () => {
+  bookSelectPage = 1;
+  renderBookSelectGrid(bookSelectSearchInput.value);
+});
+bookSelectPrevBtn?.addEventListener('click', () => {
+  bookSelectPage = Math.max(1, bookSelectPage - 1);
+  renderBookSelectGrid(bookSelectSearchInput?.value || '');
+});
+bookSelectNextBtn?.addEventListener('click', () => {
+  bookSelectPage += 1;
+  renderBookSelectGrid(bookSelectSearchInput?.value || '');
+});
 bookGrid?.addEventListener('click', event => {
   const card = event.target.closest('[data-book-id]');
   if(card) chooseBook(card.dataset.bookId);

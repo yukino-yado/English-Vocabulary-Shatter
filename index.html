@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>英単語シャッター</title>
-  <link rel="stylesheet" href="/style.css?v=3.5.0" />
+  <link rel="stylesheet" href="/style.css?v=3.8.0" />
 </head>
 <body>
   <div class="bg-shards" aria-hidden="true">
@@ -30,13 +30,18 @@
           <p class="eyebrow dark">SELECT BOOK</p>
           <h2>教材を選択</h2>
         </div>
-        <span class="book-select-note">横にスクロールできます</span>
+        <span class="book-select-note">1ページ9教材まで表示します</span>
       </div>
       <label class="book-search-field book-select-search">
         <span>教材を検索</span>
         <input id="bookSelectSearchInput" type="search" placeholder="教材名を入力" autocomplete="off" />
       </label>
       <div id="bookSelectGrid" class="book-grid book-select-grid" aria-label="教材一覧"></div>
+      <div id="bookSelectPager" class="book-select-pager hidden" aria-label="教材ページ切り替え">
+        <button id="bookSelectPrevBtn" class="ghost-btn small" type="button">前へ</button>
+        <span id="bookSelectPageInfo">1 / 1</span>
+        <button id="bookSelectNextBtn" class="ghost-btn small" type="button">次へ</button>
+      </div>
       <p id="bookSelectEmptyMessage" class="book-empty-message hidden">公開中の教材がありません。</p>
     </section>
 
@@ -124,7 +129,7 @@
     </label>
     <div class="book-shelf-head">
       <span>教材一覧</span>
-      <small>横にスクロールできます</small>
+      <small>1ページ9教材まで表示します</small>
     </div>
     <div id="bookGrid" class="book-grid" aria-label="教材一覧"></div>
     <p id="bookEmptyMessage" class="book-empty-message hidden">該当する教材がありません。</p>
@@ -280,7 +285,7 @@
     <button id="resetBtn" class="danger-btn">学習記録をリセット</button>
   </dialog>
 
-  <script src="/words.js?v=3.5.0"></script>
-  <script src="/app.js?v=3.5.0"></script>
+  <script src="/words.js?v=3.8.0"></script>
+  <script src="/app.js?v=3.8.0"></script>
 </body>
 </html>
