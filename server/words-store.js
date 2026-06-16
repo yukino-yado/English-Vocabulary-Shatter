@@ -58,6 +58,44 @@ function formatMergedAnswer(labels, body) {
   const labelText = [...new Set(labels)].join('');
   return `${labelText}${body}`.trim();
 }
+function cleanMeaningChoice(value) {
+  return String(value || '')
+    .replace(/^[\s　、，,・:：;；.．\-ー]+/, '')
+    .replace(/^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]\s*/, '')
+    .replace(/^[\(（]?\d+[\)）.．、:：]\s*/, '')
+    .trim();
+}
+function splitNumberedMeaning(value) {
+  const text = String(value || '').trim();
+  const matches = text.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳][^①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]+/g) || [];
+  return matches.map(cleanMeaningChoice).filter(Boolean);
+}
+function splitCommaMeaning(value) {
+  const text = String(value || '').trim();
+  if(!text.includes('、')) return [];
+  return text.split('、').map(cleanMeaningChoice).filter(Boolean);
+}
+function splitMeaningParts(value) {
+  const text = String(value || '').replace(/\r?\n/g, '　').trim();
+  if(!text) return [];
+  const labelled = text.match(/(?:【[^】]+】)+[^【]*/g)?.map(v => v.trim()).filter(Boolean) || [];
+  if(labelled.length){
+    return labelled.flatMap(item => {
+      const labels = answerLabelParts(item).join('');
+      const body = answerBodyPart(item);
+      const numbered = splitNumberedMeaning(body);
+      const comma = numbered.length >= 2 ? numbered : splitCommaMeaning(body);
+      const parts = comma.length >= 2 ? comma : [body || item];
+      return parts.map(part => labels && part ? `${labels}${part}` : part).filter(Boolean);
+    });
+  }
+  const numbered = splitNumberedMeaning(text);
+  if(numbered.length >= 2) return numbered;
+  const comma = splitCommaMeaning(text);
+  if(comma.length >= 2) return comma;
+  return [text];
+}
+
 function consolidateAnswers(rawAnswers) {
   const source = Array.isArray(rawAnswers) ? rawAnswers : [];
   const premerged = [];
@@ -95,8 +133,11 @@ function consolidateAnswers(rawAnswers) {
 }
 
 function answersFrom(value) {
-  if(Array.isArray(value)) return consolidateAnswers([...new Set(value.map(v => String(v || '').trim()).filter(Boolean))]);
-  return [];
+  if(Array.isArray(value)) {
+    const expanded = value.flatMap(item => splitMeaningParts(item)).map(v => String(v || '').trim()).filter(Boolean);
+    return consolidateAnswers([...new Set(expanded)]);
+  }
+  return splitMeaningParts(value);
 }
 
 export function normalizeWords(rawWords) {

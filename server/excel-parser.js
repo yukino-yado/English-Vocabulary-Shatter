@@ -1,12 +1,51 @@
 import * as XLSX from 'xlsx';
 
-function splitMeaning(value) {
+function answerLabelParts(answer) {
+  return String(answer || '').match(/【[^】]+】/g) || [];
+}
+function answerBodyPart(answer) {
+  return String(answer || '').replace(/【[^】]+】/g, '').replace(/\s+/g, ' ').trim();
+}
+function cleanMeaningChoice(value) {
+  return String(value || '')
+    .replace(/^[\s　、，,・:：;；.．\-ー]+/, '')
+    .replace(/^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]\s*/, '')
+    .replace(/^[\(（]?\d+[\)）.．、:：]\s*/, '')
+    .trim();
+}
+function splitNumberedMeaning(value) {
+  const text = String(value || '').trim();
+  const matches = text.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳][^①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]+/g) || [];
+  return matches.map(cleanMeaningChoice).filter(Boolean);
+}
+function splitCommaMeaning(value) {
+  const text = String(value || '').trim();
+  if(!text.includes('、')) return [];
+  return text.split('、').map(cleanMeaningChoice).filter(Boolean);
+}
+function splitMeaningParts(value) {
   const text = String(value || '').replace(/\r?\n/g, '　').trim();
   if(!text) return [];
-  // 【名】【形】白（い）のように、複数の品詞ラベルが同じ意味にかかる場合は1つの選択肢として扱う。
   const labelled = text.match(/(?:【[^】]+】)+[^【]*/g)?.map(v => v.trim()).filter(Boolean) || [];
-  if(labelled.length) return labelled;
+  if(labelled.length){
+    return labelled.flatMap(item => {
+      const labels = answerLabelParts(item).join('');
+      const body = answerBodyPart(item);
+      const numbered = splitNumberedMeaning(body);
+      const comma = numbered.length >= 2 ? numbered : splitCommaMeaning(body);
+      const parts = comma.length >= 2 ? comma : [body || item];
+      return parts.map(part => labels && part ? `${labels}${part}` : part).filter(Boolean);
+    });
+  }
+  const numbered = splitNumberedMeaning(text);
+  if(numbered.length >= 2) return numbered;
+  const comma = splitCommaMeaning(text);
+  if(comma.length >= 2) return comma;
   return [text];
+}
+
+function splitMeaning(value) {
+  return splitMeaningParts(value);
 }
 
 function isHeaderRow(word, meaning) {
