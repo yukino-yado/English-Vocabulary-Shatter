@@ -394,7 +394,6 @@ async function publish(){
         bookName,
         thumbnailAction,
         thumbnailDataUrl:thumbnailAction === 'replace' ? thumbnailDataUrl : '',
-        unitNames:(currentBooksCache.find(book => String(book.id || '') === String(target.id || ''))?.unitNames || []),
       }),
     });
     const total = Number(result.book?.total || result.book?.words?.length || parsedWords.length);

@@ -526,8 +526,7 @@ function unitName(unit){
   return custom || `Unit${unit}`;
 }
 function unitNameWithNumber(unit){
-  const name = unitName(unit);
-  return name === `Unit${unit}` ? name : `Unit${unit}：${name}`;
+  return unitName(unit);
 }
 function unitRangeLabel(unit){
   const r = unitRange(unit);
