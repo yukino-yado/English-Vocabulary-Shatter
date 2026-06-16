@@ -270,18 +270,64 @@ function normalizeUnitNames(value, unitCount){
   return Array.from({ length: Math.max(0, unitCount) }, (_, index) => String(source[index] || '').trim().slice(0, 80));
 }
 
-function normalizeBook(rawBook, index = 0){
-  const words = normalizePublishedWords(rawBook?.words || []);
+function normalizePublishedUnit(rawUnit, index = 0){
+  const words = normalizePublishedWords(rawUnit?.words || []);
   if(!words.length) return null;
-  const name = String(rawBook?.name || rawBook?.bookName || `学習メニュー${index + 1}`).trim() || `学習メニュー${index + 1}`;
+  return {
+    id:String(rawUnit?.id || `unit:${index + 1}`),
+    name:String(rawUnit?.name || rawUnit?.unitName || rawUnit?.title || '').trim().slice(0, 80),
+    sourceName:String(rawUnit?.sourceName || ''),
+    updatedAt:rawUnit?.updatedAt || null,
+    total:words.length,
+    words,
+  };
+}
+
+function flattenUnitWords(units){
+  let id = 1;
+  return units.flatMap((unit, unitIndex) => (unit.words || []).map(word => ({
+    ...word,
+    id:id++,
+    unitIndex:unitIndex + 1,
+    unitId:unit.id || `unit:${unitIndex + 1}`,
+  })));
+}
+
+function unitsFromFlatWords(words, unitNames = []){
   const unitCount = Math.max(1, Math.ceil(words.length / UNIT_SIZE));
+  return Array.from({ length:unitCount }, (_, index) => {
+    const start = index * UNIT_SIZE;
+    const slice = words.slice(start, start + UNIT_SIZE).map((word, wordIndex) => ({ ...word, id:wordIndex + 1 }));
+    return {
+      id:`unit:${index + 1}`,
+      name:String(unitNames[index] || '').trim().slice(0, 80),
+      sourceName:'',
+      updatedAt:null,
+      total:slice.length,
+      words:slice,
+    };
+  }).filter(unit => unit.words.length);
+}
+
+function normalizeBook(rawBook, index = 0){
+  const name = String(rawBook?.name || rawBook?.bookName || `学習メニュー${index + 1}`).trim() || `学習メニュー${index + 1}`;
+  let units = Array.isArray(rawBook?.units) ? rawBook.units.map(normalizePublishedUnit).filter(Boolean) : [];
+  if(!units.length){
+    const words = normalizePublishedWords(rawBook?.words || []);
+    if(!words.length) return null;
+    const unitNames = normalizeUnitNames(rawBook?.unitNames || [], Math.max(1, Math.ceil(words.length / UNIT_SIZE)));
+    units = unitsFromFlatWords(words, unitNames);
+  }
+  if(!units.length) return null;
+  const words = flattenUnitWords(units);
   return {
     id:String(rawBook?.id || `book:${normalizeWordIdentity(name)}`),
     name,
     sourceName:String(rawBook?.sourceName || ''),
     updatedAt:rawBook?.updatedAt || null,
     thumbnailUrl:normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
-    unitNames:normalizeUnitNames(rawBook?.unitNames || rawBook?.units, unitCount),
+    unitNames:units.map(unit => String(unit.name || '').trim().slice(0, 80)),
+    units,
     archived:Boolean(rawBook?.archived),
     total:words.length,
     words
@@ -303,7 +349,7 @@ function normalizeCatalog(payload){
 
 function fallbackCatalog(){
   const words = normalizePublishedWords(WORDS);
-  return { books:[{ id:'book:basic-vocabulary', name:'基本英単語', words, total:words.length, sourceName:'同梱初期データ', updatedAt:null, thumbnailUrl:'', unitNames:[] }] };
+  return { books:[{ id:'book:basic-vocabulary', name:'基本英単語', words, total:words.length, sourceName:'同梱初期データ', updatedAt:null, thumbnailUrl:'', unitNames:[], units:unitsFromFlatWords(words, []) }] };
 }
 
 function selectCurrentBook(preferredId = ''){
@@ -411,7 +457,7 @@ function renderCurrentBookCard(){
     return;
   }
   if(currentBookName) currentBookName.textContent = currentBook.name;
-  if(currentBookMeta) currentBookMeta.textContent = `${currentBook.total}語・${Math.ceil(currentBook.total / UNIT_SIZE)} Unit`;
+  if(currentBookMeta) currentBookMeta.textContent = `${currentBook.total}語・${currentUnitCount()} Unit`;
   setThumbnail(currentBookThumbnail, currentBook.thumbnailUrl);
 }
 
@@ -430,7 +476,7 @@ function createBookCard(book, variant = 'dialog'){
   const title = document.createElement('strong');
   title.textContent = book.name;
   const meta = document.createElement('span');
-  meta.textContent = `${book.total}語・${Math.ceil(book.total / UNIT_SIZE)} Unit・${Math.ceil(book.total / PART_SIZE)} Part`;
+  meta.textContent = `${book.total}語・${Number(book.units?.length || book.unitNames?.length || Math.ceil(book.total / UNIT_SIZE))} Unit・${Math.ceil(book.total / PART_SIZE)} Part`;
   copy.append(title, meta);
 
   const badge = document.createElement('span');
@@ -502,9 +548,20 @@ function chooseBook(bookId){
   showMenuScreen();
 }
 
+function currentUnitCount(){
+  if(currentBook?.units?.length) return currentBook.units.length;
+  return Math.ceil(WORDS.length / UNIT_SIZE);
+}
 function unitRange(unit){
-  const start = (unit - 1) * UNIT_SIZE + 1;
-  const end = Math.min(unit * UNIT_SIZE, WORDS.length);
+  const unitIndex = Math.max(1, Number(unit) || 1);
+  if(currentBook?.units?.length){
+    const start = currentBook.units.slice(0, unitIndex - 1).reduce((sum, entry) => sum + Number(entry.total || entry.words?.length || 0), 0) + 1;
+    const target = currentBook.units[unitIndex - 1];
+    const count = Number(target?.total || target?.words?.length || 0);
+    return { start, end: Math.max(start, start + count - 1) };
+  }
+  const start = (unitIndex - 1) * UNIT_SIZE + 1;
+  const end = Math.min(unitIndex * UNIT_SIZE, WORDS.length);
   return {start, end};
 }
 function unitWords(unit){
@@ -522,7 +579,8 @@ function partWords(unit, part){
   return WORDS.filter(w => w.id >= r.start && w.id <= r.end);
 }
 function unitName(unit){
-  const custom = String(currentBook?.unitNames?.[Number(unit) - 1] || '').trim();
+  const index = Number(unit) - 1;
+  const custom = String(currentBook?.units?.[index]?.name || currentBook?.unitNames?.[index] || '').trim();
   return custom || `Unit${unit}`;
 }
 function unitNameWithNumber(unit){
@@ -533,7 +591,7 @@ function unitRangeLabel(unit){
   return `${unitNameWithNumber(unit)}（${r.start}〜${r.end}）`;
 }
 function wordsInUnitRange(startUnit, endUnit){
-  const unitCount = Math.max(1, Math.ceil(WORDS.length / UNIT_SIZE));
+  const unitCount = Math.max(1, currentUnitCount());
   const start = Math.min(Math.max(Number(startUnit) || 1, 1), unitCount);
   const end = Math.min(Math.max(Number(endUnit) || start, start), unitCount);
   const startId = unitRange(start).start;
@@ -608,7 +666,7 @@ function clearStartMessage(){
 
 function populateRangeUnitSelects(){
   if(!rangeStartUnitSelect || !rangeEndUnitSelect) return;
-  const unitCount = Math.max(1, Math.ceil(WORDS.length / UNIT_SIZE));
+  const unitCount = Math.max(1, currentUnitCount());
   const currentStart = Math.min(Math.max(Number(settings.rangeStartUnit) || 1, 1), unitCount);
   const currentEnd = Math.min(Math.max(Number(settings.rangeEndUnit) || currentStart, currentStart), unitCount);
   rangeStartUnitSelect.innerHTML = '';
@@ -629,7 +687,7 @@ function populateRangeUnitSelects(){
 }
 
 function initUnits(){
-  const unitCount = Math.ceil(WORDS.length / UNIT_SIZE);
+  const unitCount = currentUnitCount();
   unitSelect.innerHTML = '';
   if(unitCount === 0){
     unitSelect.innerHTML = '<option value="1">教材なし</option>';

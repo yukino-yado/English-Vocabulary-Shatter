@@ -6,9 +6,9 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>英単語シャッター｜開発者メニュー</title>
-  <link rel="icon" type="image/png" href="/app-icon.png?v=4.3.0" />
-  <link rel="apple-touch-icon" href="/app-icon.png?v=4.3.0" />
-  <link rel="stylesheet" href="/developer.css?v=4.3.0" />
+  <link rel="icon" type="image/png" href="/app-icon.png?v=4.4.0" />
+  <link rel="apple-touch-icon" href="/app-icon.png?v=4.4.0" />
+  <link rel="stylesheet" href="/developer.css?v=4.4.0" />
 </head>
 <body>
   <header class="dev-header">
@@ -60,7 +60,13 @@
         <label class="name-field">
           <span>生徒側に表示する学習メニュー名</span>
           <input id="bookNameInput" type="text" maxlength="100" placeholder="例：中学1年 英単語 / 英検3級対策" />
-          <small>同じ名前を指定すると、その学習メニューへ追加・更新できます。</small>
+          <small>同じ名前を指定すると、その教材の中へUnitとして追加できます。</small>
+        </label>
+
+        <label class="name-field">
+          <span>今回追加するUnit名</span>
+          <input id="unitNameInput" type="text" maxlength="80" placeholder="例：NEW HORIZON Unit 1 / be動詞 / Lesson 3" />
+          <small>読み込んだファイル1つを、このUnit名で教材の中に入れます。</small>
         </label>
 
         <label class="file-drop" id="fileDrop">
@@ -123,6 +129,7 @@
         <div id="previewArea" class="preview-area hidden">
           <div class="preview-summary">
             <div><span>学習メニュー名</span><strong id="previewBookName">未入力</strong></div>
+            <div><span>Unit名</span><strong id="previewUnitName">未入力</strong></div>
             <div><span>ファイル</span><strong id="previewFilename">―</strong></div>
             <div><span>読み取り元</span><strong id="previewSheet">―</strong></div>
             <div><span>読み取った単語</span><strong id="previewTotal">―</strong></div>
@@ -134,15 +141,15 @@
             <label class="mode-card selected">
               <input type="radio" name="publishMode" value="merge" checked />
               <div>
-                <strong>現在の単語に追加・更新する</strong>
-                <p>同じ英単語は意味を更新し、新しい単語は末尾へ追加します。通常はこちらを使用します。</p>
+                <strong>教材の中へUnitとして追加する</strong>
+                <p>今回読み込んだファイルを、1つのUnitとして教材の中へ追加します。通常はこちらを使用します。</p>
               </div>
             </label>
             <label class="mode-card warning">
               <input type="radio" name="publishMode" value="replace" />
               <div>
-                <strong>アップロード内容で置き換える</strong>
-                <p>同じ名前の学習メニューを、今回のファイル内容だけで作り直します。</p>
+                <strong>このUnitだけで教材を作り直す</strong>
+                <p>同じ名前の教材を、今回のファイル1つだけの教材として作り直します。</p>
               </div>
             </label>
           </div>
@@ -190,6 +197,6 @@
   </dialog>
 
   <noscript><div class="noscript-warning">JavaScriptが無効になっています。ブラウザのJavaScriptを有効にしてください。</div></noscript>
-  <script src="/developer.js?v=4.3.0" defer></script>
+  <script src="/developer.js?v=4.4.0" defer></script>
 </body>
 </html>

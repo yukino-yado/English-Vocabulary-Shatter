@@ -132,18 +132,65 @@ function normalizeUnitNames(value, unitCount) {
   return Array.from({ length: Math.max(0, unitCount) }, (_, index) => String(source[index] || '').trim().slice(0, 80));
 }
 
+function normalizeUnit(rawUnit, index = 0) {
+  const words = normalizeWords(rawUnit?.words || []);
+  if(!words.length) return null;
+  const name = String(rawUnit?.name || rawUnit?.unitName || rawUnit?.title || '').trim().slice(0, 80);
+  return {
+    id:String(rawUnit?.id || `unit:${index + 1}`),
+    name,
+    sourceName:String(rawUnit?.sourceName || '').slice(0, 200),
+    updatedAt:rawUnit?.updatedAt || null,
+    total:words.length,
+    words,
+  };
+}
+
+function flattenUnitWords(units) {
+  let id = 1;
+  return units.flatMap((unit, unitIndex) => (unit.words || []).map(word => ({
+    ...word,
+    id:id++,
+    unitIndex:unitIndex + 1,
+    unitId:unit.id || `unit:${unitIndex + 1}`,
+  })));
+}
+
+function unitsFromFlatWords(words, unitNames = []) {
+  const unitCount = Math.max(1, Math.ceil(words.length / 100));
+  return Array.from({ length:unitCount }, (_, index) => {
+    const start = index * 100;
+    const slice = words.slice(start, start + 100).map((word, wordIndex) => ({ ...word, id:wordIndex + 1 }));
+    return {
+      id:`unit:${index + 1}`,
+      name:String(unitNames[index] || '').trim().slice(0, 80),
+      sourceName:'',
+      updatedAt:null,
+      total:slice.length,
+      words:slice,
+    };
+  }).filter(unit => unit.words.length);
+}
+
 function normalizeBook(rawBook, index = 0) {
   const name = String(rawBook?.name || rawBook?.bookName || `学習メニュー${index + 1}`).trim().slice(0, 100);
-  const words = normalizeWords(rawBook?.words || []);
-  if(!words.length) return null;
-  const unitCount = Math.max(1, Math.ceil(words.length / 100));
+  let units = Array.isArray(rawBook?.units) ? rawBook.units.map(normalizeUnit).filter(Boolean) : [];
+  if(!units.length) {
+    const words = normalizeWords(rawBook?.words || []);
+    if(!words.length) return null;
+    const unitNames = normalizeUnitNames(rawBook?.unitNames || [], Math.max(1, Math.ceil(words.length / 100)));
+    units = unitsFromFlatWords(words, unitNames);
+  }
+  if(!units.length) return null;
+  const words = flattenUnitWords(units);
   return {
     id: String(rawBook?.id || makeBookId(name)),
     name,
     sourceName: String(rawBook?.sourceName || '').slice(0, 200),
     updatedAt: rawBook?.updatedAt || null,
     thumbnailUrl: normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
-    unitNames: normalizeUnitNames(rawBook?.unitNames || rawBook?.units, unitCount),
+    unitNames: units.map(unit => String(unit.name || '').trim().slice(0, 80)),
+    units,
     archived: Boolean(rawBook?.archived),
     archivedAt: rawBook?.archivedAt || null,
     total: words.length,
@@ -167,6 +214,7 @@ function baseCatalog() {
       updatedAt: null,
       thumbnailUrl: '',
       unitNames: [],
+      units: unitsFromFlatWords(words, []),
       archived: false,
       archivedAt: null,
       total: words.length,
@@ -291,17 +339,24 @@ export async function manageBook({ bookId = '', action = '', bookName = '', thum
     let nextThumbnail = target.thumbnailUrl || '';
     if(thumbnailAction === 'replace') nextThumbnail = await publishThumbnail(thumbnailDataUrl, cleanBookName, now);
     if(thumbnailAction === 'remove') nextThumbnail = '';
-    const nextUnitNames = normalizeUnitNames(unitNames, Math.max(1, Math.ceil(target.words.length / 100)));
+    const currentTarget = normalizeBook(target);
+    const nextUnitNames = normalizeUnitNames(unitNames, currentTarget?.units?.length || Math.max(1, Math.ceil(target.words.length / 100)));
+    const nextUnits = (currentTarget?.units || []).map((unit, unitIndex) => ({
+      ...unit,
+      name: nextUnitNames[unitIndex] || '',
+      total: unit.words.length,
+    }));
+    const words = flattenUnitWords(nextUnits);
     books[index] = {
       ...target,
       name:cleanBookName,
       thumbnailUrl:nextThumbnail,
-      unitNames:nextUnitNames,
+      unitNames:nextUnits.map(unit => unit.name || ''),
+      units:nextUnits,
       updatedAt:now.toISOString(),
-      total:target.words.length,
-      words:target.words,
-    };
-  } else {
+      total:words.length,
+      words,
+    };  } else {
     throw new Error('操作内容が正しくありません。');
   }
   const result = await persistCatalog(books, `developer:${action}`);
@@ -350,7 +405,7 @@ async function publishThumbnail(dataUrl, bookName, timestamp) {
   return blob.url;
 }
 
-export async function publishWords({ rawWords, mode = 'merge', sourceName = '', bookName = '', thumbnailDataUrl = '', thumbnailAction = 'preserve' }) {
+export async function publishWords({ rawWords, mode = 'merge', sourceName = '', bookName = '', unitName = '', thumbnailDataUrl = '', thumbnailAction = 'preserve' }) {
   if(!hasBlobConfiguration()) throw new Error('Vercel Blobがプロジェクトへ接続されていません。BLOB_STORE_IDを確認してください。');
   const cleanBookName = String(bookName || '').trim().slice(0, 100);
   if(!cleanBookName) throw new Error('学習メニューの名前を入力してください。');
@@ -367,20 +422,33 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
     ? await publishThumbnail(thumbnailDataUrl, cleanBookName, now)
     : '';
 
+  const cleanUnitName = String(unitName || sourceName || '').trim().slice(0, 80);
+  const newUnit = {
+    id:`unit:${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    name:cleanUnitName,
+    sourceName:String(sourceName || '').slice(0, 200),
+    updatedAt:now.toISOString(),
+    total:incoming.length,
+    words:incoming,
+  };
+
   if(existingIndex >= 0) {
-    const existing = books[existingIndex];
-    const words = mode === 'replace' ? incoming : mergeWords(existing.words, incoming);
-    let nextThumbnail = existing.thumbnailUrl || '';
+    const existing = normalizeBook(books[existingIndex]);
+    const nextUnits = mode === 'replace'
+      ? [newUnit]
+      : [...(existing?.units || []), newUnit];
+    const words = flattenUnitWords(nextUnits);
+    let nextThumbnail = existing?.thumbnailUrl || '';
     if(thumbnailAction === 'replace') nextThumbnail = uploadedThumbnailUrl;
     if(thumbnailAction === 'remove') nextThumbnail = '';
-    const nextUnitNames = normalizeUnitNames(existing.unitNames, Math.max(1, Math.ceil(words.length / 100)));
     books[existingIndex] = {
       ...existing,
       name: cleanBookName,
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: nextThumbnail,
-      unitNames: nextUnitNames,
+      unitNames: nextUnits.map(unit => unit.name || ''),
+      units: nextUnits,
       archived: false,
       archivedAt: null,
       total: words.length,
@@ -388,17 +456,19 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
     };
   } else {
     if(books.length >= MAX_BOOKS) throw new Error(`学習メニューは最大${MAX_BOOKS}件までです。`);
+    const words = flattenUnitWords([newUnit]);
     books.push({
       id: makeBookId(cleanBookName),
       name: cleanBookName,
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: thumbnailAction === 'replace' ? uploadedThumbnailUrl : '',
-      unitNames: [],
+      unitNames: [newUnit.name || ''],
+      units: [newUnit],
       archived: false,
       archivedAt: null,
-      total: incoming.length,
-      words: incoming,
+      total: words.length,
+      words,
     });
   }
 

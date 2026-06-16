@@ -24,6 +24,7 @@ export default {
         updatedAt:book.updatedAt,
         thumbnailUrl:book.thumbnailUrl,
         unitNames:book.unitNames || [],
+        units:book.units || [],
         archived:Boolean(book.archived),
         archivedAt:book.archivedAt || null,
       }));

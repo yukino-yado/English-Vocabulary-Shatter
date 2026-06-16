@@ -12,6 +12,7 @@ export default {
         mode:body.mode === 'replace' ? 'replace' : 'merge',
         sourceName:body.sourceName || '',
         bookName:body.bookName || '',
+        unitName:body.unitName || '',
         thumbnailDataUrl:body.thumbnailDataUrl || '',
         thumbnailAction:['replace','remove'].includes(body.thumbnailAction) ? body.thumbnailAction : 'preserve',
       });

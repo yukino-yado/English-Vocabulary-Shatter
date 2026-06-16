@@ -173,3 +173,8 @@ dialog{max-width:560px;width:calc(100% - 32px);padding:26px;border:0;border-radi
 @media(max-width:720px){
   .unit-names-list{grid-template-columns:1fr}
 }
+
+/* ver 4.4: ファイル1つをUnitとして追加する入力欄 */
+.name-field + .name-field{
+  margin-top:14px;
+}
