@@ -6,9 +6,9 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>英単語シャッター｜開発者メニュー</title>
-  <link rel="icon" type="image/png" href="/app-icon.png?v=4.0.0" />
-  <link rel="apple-touch-icon" href="/app-icon.png?v=4.0.0" />
-  <link rel="stylesheet" href="/developer.css?v=4.0.0" />
+  <link rel="icon" type="image/png" href="/app-icon.png?v=4.1.0" />
+  <link rel="apple-touch-icon" href="/app-icon.png?v=4.1.0" />
+  <link rel="stylesheet" href="/developer.css?v=4.1.0" />
 </head>
 <body>
   <header class="dev-header">
@@ -104,11 +104,20 @@
         <div class="metadata-update-box hidden" id="metadataUpdateBox">
           <div>
             <strong>教材情報を変更中</strong>
-            <p id="metadataEditTarget">選択中の教材名と教材選択画面用画像だけを更新できます。</p>
+            <p id="metadataEditTarget">選択中の教材名・教材選択画面用画像・Unit名を変更できます。</p>
           </div>
-          <button id="metadataUpdateBtn" class="primary-btn" type="button">教材名・画像を更新する</button>
+          <button id="metadataUpdateBtn" class="primary-btn" type="button">教材名・画像・Unit名を更新する</button>
           <button id="metadataCancelBtn" class="ghost-btn" type="button">やめる</button>
         </div>
+        <section id="unitNamesEditor" class="unit-names-editor hidden">
+          <div class="unit-names-head">
+            <div>
+              <strong>Unit名の変更</strong>
+              <p>空欄のままにすると、従来通り「Unit1」「Unit2」と表示されます。</p>
+            </div>
+          </div>
+          <div id="unitNamesList" class="unit-names-list"></div>
+        </section>
         <p id="metadataMessage" class="message"></p>
 
         <div id="previewArea" class="preview-area hidden">
@@ -181,6 +190,6 @@
   </dialog>
 
   <noscript><div class="noscript-warning">JavaScriptが無効になっています。ブラウザのJavaScriptを有効にしてください。</div></noscript>
-  <script src="/developer.js?v=4.0.0" defer></script>
+  <script src="/developer.js?v=4.1.0" defer></script>
 </body>
 </html>

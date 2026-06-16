@@ -120,3 +120,56 @@ dialog{max-width:560px;width:calc(100% - 32px);padding:26px;border:0;border-radi
   color:#53617d;
   line-height:1.7;
 }
+
+/* ver 4.1: Unit名編集 */
+.unit-names-editor{
+  margin:16px 0;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:linear-gradient(180deg,#fff,#f6f9ff);
+}
+.unit-names-head strong{
+  display:block;
+  color:var(--ink);
+  font-weight:900;
+  margin-bottom:4px;
+}
+.unit-names-head p{
+  margin:0 0 14px;
+  color:var(--soft);
+  line-height:1.7;
+}
+.unit-names-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.unit-name-row{
+  display:grid;
+  gap:7px;
+}
+.unit-name-row span{
+  color:var(--soft);
+  font-size:13px;
+  font-weight:900;
+}
+.unit-name-row input{
+  width:100%;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+  outline:none;
+}
+.unit-name-row input:focus{
+  box-shadow:0 0 0 4px rgba(125,220,255,.18);
+}
+.published-unit-names{
+  color:var(--soft);
+}
+@media(max-width:720px){
+  .unit-names-list{grid-template-columns:1fr}
+}

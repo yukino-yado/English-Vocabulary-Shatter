@@ -14,6 +14,7 @@ export default {
         bookName:body.bookName || '',
         thumbnailAction:['replace','remove','preserve'].includes(body.thumbnailAction) ? body.thumbnailAction : 'preserve',
         thumbnailDataUrl:body.thumbnailDataUrl || '',
+        unitNames:Array.isArray(body.unitNames) ? body.unitNames : [],
       });
       const books = result.books.map(book => ({
         id:book.id,
@@ -22,6 +23,7 @@ export default {
         sourceName:book.sourceName,
         updatedAt:book.updatedAt,
         thumbnailUrl:book.thumbnailUrl,
+        unitNames:book.unitNames || [],
         archived:Boolean(book.archived),
         archivedAt:book.archivedAt || null,
       }));

@@ -127,16 +127,23 @@ function makeBookId(name) {
   return `book:${normalized}`;
 }
 
+function normalizeUnitNames(value, unitCount) {
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: Math.max(0, unitCount) }, (_, index) => String(source[index] || '').trim().slice(0, 80));
+}
+
 function normalizeBook(rawBook, index = 0) {
   const name = String(rawBook?.name || rawBook?.bookName || `学習メニュー${index + 1}`).trim().slice(0, 100);
   const words = normalizeWords(rawBook?.words || []);
   if(!words.length) return null;
+  const unitCount = Math.max(1, Math.ceil(words.length / 100));
   return {
     id: String(rawBook?.id || makeBookId(name)),
     name,
     sourceName: String(rawBook?.sourceName || '').slice(0, 200),
     updatedAt: rawBook?.updatedAt || null,
     thumbnailUrl: normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
+    unitNames: normalizeUnitNames(rawBook?.unitNames || rawBook?.units, unitCount),
     archived: Boolean(rawBook?.archived),
     archivedAt: rawBook?.archivedAt || null,
     total: words.length,
@@ -159,6 +166,7 @@ function baseCatalog() {
       sourceName: '同梱初期データ',
       updatedAt: null,
       thumbnailUrl: '',
+      unitNames: [],
       archived: false,
       archivedAt: null,
       total: words.length,
@@ -259,7 +267,7 @@ async function persistCatalog(books, sourceName = '') {
   return { ...dataset, blobUrl:blob.url };
 }
 
-export async function manageBook({ bookId = '', action = '', bookName = '', thumbnailAction = 'preserve', thumbnailDataUrl = '' }) {
+export async function manageBook({ bookId = '', action = '', bookName = '', thumbnailAction = 'preserve', thumbnailDataUrl = '', unitNames = [] }) {
   if(!hasBlobConfiguration()) throw new Error('Vercel Blobがプロジェクトへ接続されていません。BLOB_STORE_IDを確認してください。');
   const current = normalizeCatalog(await getLatestDataset().catch(() => baseCatalog()));
   const books = current.books.map(book => ({ ...book, words:normalizeWords(book.words) }));
@@ -283,10 +291,12 @@ export async function manageBook({ bookId = '', action = '', bookName = '', thum
     let nextThumbnail = target.thumbnailUrl || '';
     if(thumbnailAction === 'replace') nextThumbnail = await publishThumbnail(thumbnailDataUrl, cleanBookName, now);
     if(thumbnailAction === 'remove') nextThumbnail = '';
+    const nextUnitNames = normalizeUnitNames(unitNames, Math.max(1, Math.ceil(target.words.length / 100)));
     books[index] = {
       ...target,
       name:cleanBookName,
       thumbnailUrl:nextThumbnail,
+      unitNames:nextUnitNames,
       updatedAt:now.toISOString(),
       total:target.words.length,
       words:target.words,
@@ -363,12 +373,14 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
     let nextThumbnail = existing.thumbnailUrl || '';
     if(thumbnailAction === 'replace') nextThumbnail = uploadedThumbnailUrl;
     if(thumbnailAction === 'remove') nextThumbnail = '';
+    const nextUnitNames = normalizeUnitNames(existing.unitNames, Math.max(1, Math.ceil(words.length / 100)));
     books[existingIndex] = {
       ...existing,
       name: cleanBookName,
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: nextThumbnail,
+      unitNames: nextUnitNames,
       archived: false,
       archivedAt: null,
       total: words.length,
@@ -382,6 +394,7 @@ export async function publishWords({ rawWords, mode = 'merge', sourceName = '', 
       sourceName: String(sourceName || '').slice(0, 200),
       updatedAt: now.toISOString(),
       thumbnailUrl: thumbnailAction === 'replace' ? uploadedThumbnailUrl : '',
+      unitNames: [],
       archived: false,
       archivedAt: null,
       total: incoming.length,

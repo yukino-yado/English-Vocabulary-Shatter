@@ -265,16 +265,23 @@ function normalizePublishedWords(rawWords){
   }).filter(Boolean).sort((a, b) => a.id - b.id).map((item, index) => ({ ...item, id:index + 1 }));
 }
 
+function normalizeUnitNames(value, unitCount){
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: Math.max(0, unitCount) }, (_, index) => String(source[index] || '').trim().slice(0, 80));
+}
+
 function normalizeBook(rawBook, index = 0){
   const words = normalizePublishedWords(rawBook?.words || []);
   if(!words.length) return null;
   const name = String(rawBook?.name || rawBook?.bookName || `学習メニュー${index + 1}`).trim() || `学習メニュー${index + 1}`;
+  const unitCount = Math.max(1, Math.ceil(words.length / UNIT_SIZE));
   return {
     id:String(rawBook?.id || `book:${normalizeWordIdentity(name)}`),
     name,
     sourceName:String(rawBook?.sourceName || ''),
     updatedAt:rawBook?.updatedAt || null,
     thumbnailUrl:normalizeThumbnailSource(rawBook?.thumbnailUrl || rawBook?.thumbnailDataUrl || rawBook?.thumbnail || ''),
+    unitNames:normalizeUnitNames(rawBook?.unitNames || rawBook?.units, unitCount),
     archived:Boolean(rawBook?.archived),
     total:words.length,
     words
@@ -296,7 +303,7 @@ function normalizeCatalog(payload){
 
 function fallbackCatalog(){
   const words = normalizePublishedWords(WORDS);
-  return { books:[{ id:'book:basic-vocabulary', name:'基本英単語', words, total:words.length, sourceName:'同梱初期データ', updatedAt:null, thumbnailUrl:'' }] };
+  return { books:[{ id:'book:basic-vocabulary', name:'基本英単語', words, total:words.length, sourceName:'同梱初期データ', updatedAt:null, thumbnailUrl:'', unitNames:[] }] };
 }
 
 function selectCurrentBook(preferredId = ''){
@@ -514,6 +521,18 @@ function partWords(unit, part){
   const r = partRange(unit, part);
   return WORDS.filter(w => w.id >= r.start && w.id <= r.end);
 }
+function unitName(unit){
+  const custom = String(currentBook?.unitNames?.[Number(unit) - 1] || '').trim();
+  return custom || `Unit${unit}`;
+}
+function unitNameWithNumber(unit){
+  const name = unitName(unit);
+  return name === `Unit${unit}` ? name : `Unit${unit}：${name}`;
+}
+function unitRangeLabel(unit){
+  const r = unitRange(unit);
+  return `${unitNameWithNumber(unit)}（${r.start}〜${r.end}）`;
+}
 function wordsInUnitRange(startUnit, endUnit){
   const unitCount = Math.max(1, Math.ceil(WORDS.length / UNIT_SIZE));
   const start = Math.min(Math.max(Number(startUnit) || 1, 1), unitCount);
@@ -523,7 +542,12 @@ function wordsInUnitRange(startUnit, endUnit){
   return WORDS.filter(w => w.id >= startId && w.id <= endId);
 }
 function rangeModeText(mode){
-  if(mode === 'custom') return settings.unitRangeMode === 'range' ? `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}` : 'すべてのUnitから';
+  if(mode === 'custom'){
+    if(settings.unitRangeMode !== 'range') return 'すべてのUnitから';
+    const start = settings.rangeStartUnit || 1;
+    const end = settings.rangeEndUnit || settings.rangeStartUnit || 1;
+    return `${unitNameWithNumber(start)}〜${unitNameWithNumber(end)}`;
+  }
   if(mode === 'unit') return '選択したUnit全てから';
   return '選択したPartから';
 }
@@ -539,9 +563,14 @@ function currentRangeLabel(){
   const unit = Number(unitSelect.value || settings.selectedUnit || 1);
   const part = Number(partSelect.value || settings.selectedPart || 1);
   const rangeMode = settings.rangeMode || 'part';
-  if(rangeMode === 'custom') return settings.unitRangeMode === 'range' ? `Unit${settings.rangeStartUnit || 1}〜Unit${settings.rangeEndUnit || settings.rangeStartUnit || 1}` : 'すべてのUnit';
-  if(rangeMode === 'unit') return `Unit${unit}全て`;
-  return `Unit${unit}・Part${part}`;
+  if(rangeMode === 'custom'){
+    if(settings.unitRangeMode !== 'range') return 'すべてのUnit';
+    const start = settings.rangeStartUnit || 1;
+    const end = settings.rangeEndUnit || settings.rangeStartUnit || 1;
+    return `${unitNameWithNumber(start)}〜${unitNameWithNumber(end)}`;
+  }
+  if(rangeMode === 'unit') return `${unitNameWithNumber(unit)}全て`;
+  return `${unitNameWithNumber(unit)}・Part${part}`;
 }
 function shuffle(array){
   const a = [...array];
@@ -589,7 +618,7 @@ function populateRangeUnitSelects(){
     const r = unitRange(u);
     const startOpt = document.createElement('option');
     startOpt.value = String(u);
-    startOpt.textContent = `Unit${u}（${r.start}〜${r.end}）`;
+    startOpt.textContent = unitRangeLabel(u);
     const endOpt = startOpt.cloneNode(true);
     rangeStartUnitSelect.appendChild(startOpt);
     rangeEndUnitSelect.appendChild(endOpt);
@@ -621,7 +650,7 @@ function initUnits(){
     const r = unitRange(u);
     const opt = document.createElement('option');
     opt.value = u;
-    opt.textContent = `Unit${u}（${r.start}〜${r.end}）`;
+    opt.textContent = unitRangeLabel(u);
     unitSelect.appendChild(opt);
   }
   const preferredUnit = Number(settings.selectedUnit) || 1;
@@ -633,7 +662,7 @@ function initUnits(){
     const r = unitRange(u);
     const opt = document.createElement('option');
     opt.value = String(u);
-    opt.textContent = `Unit${u}（${r.start}〜${r.end}）`;
+    opt.textContent = unitRangeLabel(u);
     statsScopeSelect.appendChild(opt);
   }
   if(![...statsScopeSelect.options].some(option => option.value === String(settings.statsScope))) settings.statsScope = 'all';
@@ -1092,7 +1121,7 @@ function renderStats(){
   saveSettings();
 
   const targetWords = statsWordsForScope(scope);
-  const label = scope === 'all' ? `${currentBook?.name || '教材なし'}・全体` : `${currentBook?.name || '教材なし'}・Unit${scope}`;
+  const label = scope === 'all' ? `${currentBook?.name || '教材なし'}・全体` : `${currentBook?.name || '教材なし'}・${unitNameWithNumber(scope)}`;
   const learned = targetWords.filter(w => progressForWord(w)?.seen > 0).length;
   const learnedPct = targetWords.length ? Math.round((learned / targetWords.length) * 100) : 0;
 
